@@ -3,27 +3,28 @@ from django.contrib.auth.models import User
 
 
 class Subject(models.Model):
-    name = models.CharField(max_length=100)
+    """Модель учебного предмета"""
+    name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, blank=True)
+    code = models.CharField(max_length=20, unique=True, blank=True)
 
     def __str__(self):
         return self.name
 
-    class Meta:
-        ordering = ['name']
-
 
 class UserSubject(models.Model):
+    """Связь пользователя с предметом и его уровнем знаний"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_subjects')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+
     LEVEL_CHOICES = [
         ('beginner', 'Начинающий'),
         ('intermediate', 'Средний'),
         ('advanced', 'Продвинутый'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    subject = models.ForeignKey('Subject', on_delete=models.CASCADE)  # ← ИСПРАВЛЕНО
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='beginner')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['user', 'subject']
@@ -33,22 +34,34 @@ class UserSubject(models.Model):
 
 
 class Swipe(models.Model):
+    """Модель для свайпов (лайков/дизлайков)"""
     swiper = models.ForeignKey(User, on_delete=models.CASCADE, related_name='swipes_made')
     swiped_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='swipes_received')
-    liked = models.BooleanField()
+
+    ACTION_CHOICES = [
+        ('like', 'Like'),
+        ('pass', 'Pass'),
+    ]
+
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['swiper', 'swiped_user']
 
     def __str__(self):
-        return f"{self.swiper.username} -> {self.swiped_user.username} : {'like' if self.liked else 'dislike'}"
+        return f"{self.swiper.username} -> {self.swiped_user.username} ({self.action})"
 
 
 class Match(models.Model):
-    users = models.ManyToManyField(User, related_name='matches')
+    """Модель мэтча между пользователями"""
+    user1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='matches_as_user1')
+    user2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='matches_as_user2')
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
+    class Meta:
+        unique_together = ['user1', 'user2']
+
     def __str__(self):
-        return f"Match between {', '.join([user.username for user in self.users.all()])}"
+        return f"Match: {self.user1.username} & {self.user2.username}"

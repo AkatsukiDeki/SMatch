@@ -1,45 +1,59 @@
+# users/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile
+from .models import UserProfile, University
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        model = University
+        fields = ['id', 'name', 'short_name', 'city', 'website']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    university = UniversitySerializer(read_only=True)
+    university_id = serializers.PrimaryKeyRelatedField(
+        queryset=University.objects.all(),
+        source='university',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = UserProfile
-        fields = ['id', 'user', 'university', 'faculty', 'bio', 'avatar']
+        fields = [
+            'id', 'university', 'university_id', 'faculty',
+            'year_of_study', 'bio', 'telegram', 'whatsapp', 'phone',
+            'show_contact_info'
+        ]
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = [
+            'university', 'faculty', 'year_of_study', 'bio',
+            'telegram', 'whatsapp', 'phone', 'show_contact_info'
+        ]
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
-    university = serializers.CharField(write_only=True, required=False)
-    faculty = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'university', 'faculty']
+        fields = ['username', 'password', 'email', 'first_name', 'last_name']
 
     def create(self, validated_data):
-        university = validated_data.pop('university', '')
-        faculty = validated_data.pop('faculty', '')
-
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password']
-        )
-
-        UserProfile.objects.create(
-            user=user,
-            university=university,
-            faculty=faculty
-        )
-
+        user = User.objects.create_user(**validated_data)
+        UserProfile.objects.create(user=user)
         return user
+
+
+class UserSerializer(serializers.ModelSerializer):
+    profile = UserProfileSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']

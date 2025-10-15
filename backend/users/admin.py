@@ -1,18 +1,25 @@
+# users/admin.py
 from django.contrib import admin
-from .models import UserProfile, Subject, University
+from .models import University, UserProfile
 
-# Регистрируем модель University
-@admin.register(University)
+
 class UniversityAdmin(admin.ModelAdmin):
-    list_display = ['name', 'city', 'website']
-    search_fields = ['name', 'city']
+    list_display = ['name', 'short_name', 'city']  # Убрали 'website'
+    list_filter = ['city']
+    search_fields = ['name', 'short_name']
 
-# Убедитесь, что остальные модели также зарегистрированы
-@admin.register(UserProfile)
+
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'university', 'study_level']
-    list_filter = ['study_level', 'university']
+    list_display = ['user', 'university', 'get_year_of_study', 'faculty']  # Заменили 'study_level' на метод
+    list_filter = ['year_of_study', 'university', 'faculty']  # Исправили фильтры
+    search_fields = ['user__username', 'faculty', 'bio']
 
-@admin.register(Subject)
-class SubjectAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description']
+    def get_year_of_study(self, obj):
+        return obj.year_of_study
+
+    get_year_of_study.short_description = 'Year of Study'
+    get_year_of_study.admin_order_field = 'year_of_study'
+
+
+admin.site.register(University, UniversityAdmin)
+admin.site.register(UserProfile, UserProfileAdmin)
