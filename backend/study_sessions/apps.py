@@ -1,3 +1,4 @@
+# study_sessions/apss.py
 from django.apps import AppConfig
 
 

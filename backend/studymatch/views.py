@@ -1,6 +1,7 @@
+# studymatch/views.py
 from django.http import JsonResponse
 
 def health_check(request):
     return JsonResponse({"status": "Users API is working"})
 
-# backend/users/urls.py
+
