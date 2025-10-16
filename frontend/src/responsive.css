@@ -1,0 +1,338 @@
+/* src/responsive.css */
+/* Мобильные стили для всех компонентов */
+
+@media (max-width: 768px) {
+  /* Общие стили для мобильных */
+  .container {
+    padding: 0 0.5rem;
+  }
+
+  /* Header мобильная версия */
+  .header-container {
+    padding: 0 1rem;
+  }
+
+  .logo-text {
+    font-size: 1.2rem;
+  }
+
+  /* Карточки пользователей */
+  .user-card {
+    margin: 0 0.5rem;
+  }
+
+  .user-info {
+    padding: 0 1rem 1rem;
+  }
+
+  .card-actions {
+    padding: 1rem 1rem 2rem;
+  }
+
+  /* Чат */
+  .chat-container {
+    flex-direction: column;
+    height: calc(100vh - 60px);
+  }
+
+  .chat-list {
+    width: 100%;
+    height: 40%;
+  }
+
+  .chat-main {
+    height: 60%;
+  }
+
+  /* Формы */
+  .auth-form {
+    margin: 0 0.5rem;
+  }
+
+  /* Кнопки действий */
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Очень маленькие экраны */
+  .hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .hero p {
+    font-size: 1rem;
+  }
+
+  .feature {
+    padding: 1rem;
+  }
+
+  .session-card {
+    padding: 1rem;
+  }
+
+  .message-input textarea {
+    font-size: 16px; /* Убираем zoom на iOS */
+  }
+}
+
+/* Портретная ориентация */
+@media (max-width: 768px) and (orientation: portrait) {
+  .chat-page {
+    height: calc(100vh - 60px);
+  }
+}
+
+/* Ландшафтная ориентация для мобильных */
+@media (max-width: 768px) and (orientation: landscape) {
+  .header {
+    position: static;
+  }
+
+  .chat-container {
+    height: calc(100vh - 60px);
+  }
+}
+
+/* src/responsive.css */
+/* Дополнительные адаптивные стили */
+
+/* Планшеты и маленькие ноутбуки */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 100%;
+        padding: 0 1.5rem;
+    }
+
+    .features {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .sessions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Планшеты (портретная ориентация) */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 1rem;
+    }
+
+    .features {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .sessions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recommendations-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Улучшаем читаемость текста на мобильных */
+    body {
+        font-size: 16px; /* Предотвращает масштабирование в iOS */
+        -webkit-text-size-adjust: 100%;
+    }
+
+    /* Улучшаем доступность касаний */
+    button,
+    .btn,
+    .nav-link {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Улучшаем формы для мобильных */
+    input,
+    textarea,
+    select {
+        font-size: 16px; /* Предотвращает масштабирование в iOS */
+    }
+}
+
+/* Большие мобильные устройства */
+@media (max-width: 480px) {
+    .container {
+        padding: 0 0.8rem;
+    }
+
+    .hero h1 {
+        font-size: 1.8rem;
+        line-height: 1.2;
+    }
+
+    .hero p {
+        font-size: 1rem;
+        line-height: 1.4;
+    }
+
+    /* Улучшаем карточки для маленьких экранов */
+    .user-card,
+    .session-card,
+    .recommendation-card {
+        margin: 0 0.2rem;
+    }
+
+    /* Компактные отступы */
+    .page-header,
+    .chat-header,
+    .chat-list-header {
+        padding: 1rem;
+    }
+
+    /* Адаптивные таблицы */
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Улучшаем навигацию */
+    .nav-desktop {
+        gap: 0.5rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Очень маленькие экраны */
+@media (max-width: 360px) {
+    .container {
+        padding: 0 0.5rem;
+    }
+
+    .hero {
+        padding: 2rem 1rem;
+    }
+
+    .hero h1 {
+        font-size: 1.6rem;
+    }
+
+    .btn {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    /* Еще более компактные карточки */
+    .user-info,
+    .session-card,
+    .chat-item {
+        padding: 0.8rem;
+    }
+}
+
+/* Высокие экраны (ландшафтная ориентация мобильных) */
+@media (max-height: 500px) and (orientation: landscape) {
+    .chat-page {
+        height: calc(100vh - 50px);
+    }
+
+    .hero {
+        padding: 1.5rem 1rem;
+    }
+
+    .auth-container {
+        padding: 1rem;
+    }
+}
+
+/* Темная тема (поддержка системных настроек) */
+@media (prefers-color-scheme: dark) {
+    /* Базовые стили для темной темы */
+    :root {
+        --bg-primary: #1a1a1a;
+        --bg-secondary: #2d2d2d;
+        --text-primary: #ffffff;
+        --text-secondary: #b0b0b0;
+        --border-color: #404040;
+    }
+
+    /* Можно добавить класс для ручного переключения тем */
+}
+
+/* Печать */
+@media print {
+    .header,
+    .footer,
+    .btn,
+    .action-btn,
+    .message-input {
+        display: none !important;
+    }
+
+    .chat-container,
+    .session-card,
+    .user-card {
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+}
+
+/* Анимации для улучшения UX */
+@media (prefers-reduced-motion: no-preference) {
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    .slide-up {
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+/* Улучшения для высокоDPI экранов */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .logo-icon,
+    .chat-avatar,
+    .participant-avatar {
+        image-rendering: -webkit-optimize-contrast;
+    }
+}
+
+/* Поддержка очень больших экранов */
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1400px;
+    }
+
+    .sessions-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .features {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}

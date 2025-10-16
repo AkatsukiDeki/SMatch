@@ -1,0 +1,395 @@
+/* src/components/study-sessions/StudySessions.css */
+/* Стили для компонентов учебных сессий */
+
+/* SessionCard */
+.session-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.session-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.session-card.past {
+  opacity: 0.7;
+  background: #f8f9fa;
+}
+
+.session-card.past::before {
+  content: 'Завершена';
+  position: absolute;
+  top: 10px;
+  right: -25px;
+  background: #95a5a6;
+  color: white;
+  padding: 0.3rem 2rem;
+  transform: rotate(45deg);
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.session-title {
+  font-size: 1.3rem;
+  color: #2c3e50;
+  margin: 0;
+  flex: 1;
+  line-height: 1.3;
+}
+
+.session-subject {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.session-description {
+  color: #666;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.session-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 0.9rem;
+}
+
+/* Участники */
+.participants-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.participants-label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.participants-avatars {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.participant-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.more-participants {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #bdc3c7;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  border: 2px solid white;
+}
+
+/* Кнопки действий */
+.session-actions {
+  margin-top: 1rem;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 0.9rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.action-btn.join {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  color: white;
+}
+
+.action-btn.join:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.action-btn.leave {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.action-btn.leave:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.action-btn.delete {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+}
+
+.action-btn.delete:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+.action-btn.disabled {
+  background: #bdc3c7;
+  color: white;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* SessionForm */
+.session-form-modal {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalAppear 0.3s ease;
+}
+
+@keyframes modalAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.session-form-modal h2 {
+  margin-bottom: 2rem;
+  color: #2c3e50;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.7rem;
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn-cancel {
+  flex: 1;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #7f8c8d;
+  transform: translateY(-2px);
+}
+
+.btn-submit {
+  flex: 1;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-submit:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .session-card {
+    padding: 1.2rem;
+  }
+
+  .session-header {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .session-details {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .session-form-modal {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+
+  .participants-preview {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .participants-avatars {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .session-card {
+    padding: 1rem;
+  }
+
+  .session-title {
+    font-size: 1.1rem;
+  }
+
+  .action-btn {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 0.8rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+}

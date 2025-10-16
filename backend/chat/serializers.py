@@ -11,6 +11,7 @@ class SimpleProfileSerializer(serializers.Serializer):
     last_name = serializers.CharField(source='user.last_name')
     faculty = serializers.CharField()
     year_of_study = serializers.IntegerField()
+    study_level = serializers.CharField()  # ДОБАВЛЯЕМ
     bio = serializers.CharField()
 
 

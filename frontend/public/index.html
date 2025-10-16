@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="StudyMatch - платформа для поиска партнеров для совместного обучения" />
+
+    <!-- Open Graph метатеги для соцсетей -->
+    <meta property="og:title" content="StudyMatch - Найди партнера для учебы" />
+    <meta property="og:description" content="Присоединяйся к сообществу студентов для совместного обучения и достижения академических целей" />
+    <meta property="og:type" content="website" />
+
+    <!-- Фавконы -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <title>StudyMatch - Платформа для совместного обучения</title>
+
+    <style>
+        /* Предзагрузочные стили для избежания мерцания */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* Скрываем загрузочный экран когда React загрузится */
+        #root:not(:empty) + .loading-screen {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <noscript>
+        <div style="padding: 20px; text-align: center; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin: 20px;">
+            <h2>Требуется JavaScript</h2>
+            <p>Для работы приложения StudyMatch необходимо включить JavaScript в вашем браузере.</p>
+            <p>Пожалуйста, включите JavaScript и перезагрузите страницу.</p>
+        </div>
+    </noscript>
+
+    <div id="root">
+        <!-- React приложение будет отрендерено здесь -->
+    </div>
+
+    <!-- Загрузочный экран -->
+    <div class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">StudyMatch загружается...</div>
+    </div>
+
+    <!-- Скрипт для скрытия загрузочного экрана -->
+    <script>
+        // Скрываем загрузочный экран когда контент загрузится
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const loadingScreen = document.querySelector('.loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.opacity = '0';
+                    loadingScreen.style.transition = 'opacity 0.5s ease';
+                    setTimeout(() => loadingScreen.remove(), 500);
+                }
+            }, 1000);
+        });
+
+        // Fallback: скрываем через 5 секунд на всякий случай
+        setTimeout(function() {
+            const loadingScreen = document.querySelector('.loading-screen');
+            if (loadingScreen && document.getElementById('root').children.length > 0) {
+                loadingScreen.style.opacity = '0';
+                loadingScreen.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => loadingScreen.remove(), 500);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

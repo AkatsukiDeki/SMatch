@@ -86,6 +86,7 @@ def get_recommendations(request):
                 'last_name': user.last_name,
                 'faculty': profile.faculty,
                 'year_of_study': profile.year_of_study,
+                'study_level': profile.study_level,
                 'bio': profile.bio
             })
         except:

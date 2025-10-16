@@ -17,8 +17,12 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_year_of_study(self, obj):
         return obj.year_of_study
 
+    def study_level(self, obj):
+        return obj.study_level
+
     get_year_of_study.short_description = 'Year of Study'
     get_year_of_study.admin_order_field = 'year_of_study'
+    study_level.short_description = 'Уровень'
 
 
 admin.site.register(University, UniversityAdmin)

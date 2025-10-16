@@ -1,0 +1,22 @@
+/* src/dark-theme.css */
+/* Можно добавить позже для поддержки темной темы */
+
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --border-color: #404040;
+}
+
+[data-theme="dark"] .header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .user-card {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* И так далее для всех компонентов */

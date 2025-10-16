@@ -9,7 +9,7 @@ class SubjectAdmin(admin.ModelAdmin):
 
 @admin.register(UserSubject)
 class UserSubjectAdmin(admin.ModelAdmin):
-    list_display = ['user', 'subject', 'level']
+    list_display = ['user', 'subject', 'level', 'created_at']
     list_filter = ['level', 'subject']
     search_fields = ['user__username', 'subject__name']
 

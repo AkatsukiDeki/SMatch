@@ -57,3 +57,23 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    university = UniversitySerializer(read_only=True)
+    university_id = serializers.PrimaryKeyRelatedField(
+        queryset=University.objects.all(),
+        source='university',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    study_level = serializers.ReadOnlyField()  # Добавляем вычисляемое поле
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'id', 'university', 'university_id', 'faculty',
+            'year_of_study', 'study_level', 'bio', 'telegram', 'whatsapp', 'phone',
+            'show_contact_info', 'created_at', 'updated_at'
+        ]
