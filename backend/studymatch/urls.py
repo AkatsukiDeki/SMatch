@@ -40,6 +40,8 @@ urlpatterns = [
     path('api/matching/', include('matching.urls')),
     path('debug/urls/', debug_urls, name='debug_urls'),
     path('', root_health_check, name='root_health_check'),  # Добавляем корневой путь
+    path('api/chat/', include('chat.urls')),
+    path('api/study-sessions/', include('study_sessions.urls')),
 ]
 
 if settings.DEBUG:
