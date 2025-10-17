@@ -19,16 +19,31 @@ from .models import UserProfile, University  # Убедитесь, что Univer
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
-    serializer = UserRegistrationSerializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.save()
-        refresh = RefreshToken.for_user(user)
+    try:
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            refresh = RefreshToken.for_user(user)
+
+            # Получаем полные данные пользователя с профилем
+            user_data = UserSerializer(user).data
+
+            return Response({
+                'user': user_data,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_201_CREATED)
+        else:
+            # Возвращаем детальные ошибки валидации
+            return Response({
+                'error': 'Ошибка валидации',
+                'details': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
         return Response({
-            'user': UserProfileSerializer(user.userprofile).data,
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            'error': f'Ошибка сервера: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -41,12 +56,17 @@ def login(request):
     if user:
         refresh = RefreshToken.for_user(user)
         return Response({
-            'user': UserProfileSerializer(user.userprofile).data,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            },
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         })
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
