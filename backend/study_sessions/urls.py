@@ -10,4 +10,9 @@ urlpatterns = [
     path('join/<int:session_id>/', views.join_session, name='join_session'),
     path('leave/<int:session_id>/', views.leave_session, name='leave_session'),
     path('delete/<int:session_id>/', views.delete_session, name='delete_session'),
+
+    path('invitations/', views.get_invitations, name='get_invitations'),
+    path('<int:session_id>/invitations/', views.send_invitation, name='send_invitation'),
+    path('invitations/<int:invitation_id>/respond/', views.respond_to_invitation, name='respond_to_invitation'),
+    path('<int:session_id>/participants/', views.get_session_participants, name='get_session_participants'),
 ]

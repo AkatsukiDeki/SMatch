@@ -1,3 +1,4 @@
+// src/pages/Matching.js - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { matchingAPI } from '../services/api';
@@ -12,7 +13,6 @@ const Matching = () => {
   const { user } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
@@ -20,12 +20,16 @@ const Matching = () => {
     year: '',
     subject_id: ''
   });
-  const [swipeAnimation, setSwipeAnimation] = useState(null);
 
   useEffect(() => {
     loadSubjects();
-    loadRecommendations();
-  }, [filters]);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadRecommendations();
+    }
+  }, [filters, user]);
 
   const loadSubjects = async () => {
     try {
@@ -39,12 +43,19 @@ const Matching = () => {
   const loadRecommendations = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await matchingAPI.getRecommendations(filters);
       setRecommendations(response.data);
-      setCurrentIndex(0);
     } catch (error) {
-      setError('Ошибка загрузки рекомендаций');
       console.error('Error loading recommendations:', error);
+      setError('Ошибка загрузки рекомендаций');
+      // Показываем тестовые данные при ошибке
+      try {
+        const testResponse = await matchingAPI.getTestRecommendations();
+        setRecommendations(testResponse.data);
+      } catch (testError) {
+        setError('Не удалось загрузить рекомендации');
+      }
     } finally {
       setLoading(false);
     }
@@ -72,20 +83,13 @@ const Matching = () => {
   const handleSwipe = async (userId, action) => {
     try {
       await matchingAPI.swipe(userId, action);
-      setSwipeAnimation({ userId, action });
 
+      // Удаляем пользователя из списка рекомендаций
       setRecommendations(prev => prev.filter(user => user.id !== userId));
-      setCurrentIndex(prev => Math.min(prev, recommendations.length - 2));
-      setSwipeAnimation(null);
 
-      if (recommendations.length <= 1) {
-        loadRecommendations();
-        setCurrentIndex(0);
-      }
     } catch (error) {
       console.error('Error swiping:', error);
       setError('Ошибка при отправке действия');
-      setSwipeAnimation(null);
     }
   };
 
@@ -95,6 +99,9 @@ const Matching = () => {
       <div className="matching-page">
         <div className="auth-required">
           <h2>Для поиска партнеров необходимо войти в систему</h2>
+          <button onClick={() => navigate('/login')} className="login-btn">
+            Войти
+          </button>
         </div>
       </div>
     );
@@ -113,15 +120,19 @@ const Matching = () => {
         subjects={subjects}
       />
 
+      {error && (
+        <div className="error-message">
+          {error}
+          <button onClick={loadRecommendations} style={{marginLeft: '10px'}}>
+            Попробовать снова
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="loading">
           <div className="spinner"></div>
           <p>Поиск подходящих партнеров...</p>
-        </div>
-      ) : error ? (
-        <div className="error-message">
-          <h3>{error}</h3>
-          <button onClick={loadRecommendations}>Попробовать снова</button>
         </div>
       ) : (
         <div className="matching-container">
@@ -132,38 +143,23 @@ const Matching = () => {
               <button onClick={loadRecommendations}>Обновить</button>
             </div>
           ) : (
-            <>
-              <div className="cards-container">
-                {recommendations.slice(0, 3).map((user, index) => (
-                  <UserCard
-                    key={user.id}
-                    user={user}
-                    onSwipe={handleSwipe}
-                    currentIndex={index}
-                    totalCards={recommendations.length}
-                    style={{
-                      zIndex: 3 - index,
-                      transform: `scale(${1 - index * 0.1}) translateY(${index * 10}px)`
-                    }}
-                  />
-                ))}
-              </div>
-
-              <div className="swipe-buttons">
-                <button
-                  className="btn-pass"
-                  onClick={() => handleSwipe(recommendations[currentIndex]?.id, 'pass')}
-                >
-                  ✕ Пропустить
-                </button>
-                <button
-                  className="btn-like"
-                  onClick={() => handleSwipe(recommendations[currentIndex]?.id, 'like')}
-                >
-                  ❤️ Лайк
-                </button>
-              </div>
-            </>
+            <div className="cards-stack">
+              {/* Показываем только первые 3 карточки в стеке */}
+              {recommendations.slice(0, 3).map((user, index) => (
+                <UserCard
+                  key={user.id}
+                  user={user}
+                  onSwipe={handleSwipe}
+                  currentIndex={index}
+                  totalCards={recommendations.length}
+                  style={{
+                    zIndex: 3 - index, // Первая карточка поверх остальных
+                    transform: `scale(${1 - index * 0.08}) translateY(${index * 15}px)`,
+                    opacity: 1 - index * 0.2
+                  }}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}

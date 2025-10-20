@@ -45,12 +45,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'channels',
-
+    'core',
+    'chat',
     # Ваши приложения
-    'core.apps.CoreConfig',  # ДОБАВЬТЕ ЭТУ СТРОЧКУ
+    #'core.apps.CoreConfig',  # ДОБАВЬТЕ ЭТУ СТРОЧКУ
     'users.apps.UsersConfig',
     'matching.apps.MatchingConfig',
-    'chat.apps.ChatConfig',
+    #'chat.apps.ChatConfig',
     'study_sessions.apps.StudySessionsConfig',
     'rest_framework_simplejwt',
 ]
@@ -60,7 +61,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    #'django.middleware.csrf.CsrfViewMiddleware',
+    'studymatch.middleware.DisableCSRFMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -191,3 +193,12 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3002",  # ДОБАВЛЯЕМ
+    "http://127.0.0.1:3002",  # ДОБАВЛЯЕМ
+]

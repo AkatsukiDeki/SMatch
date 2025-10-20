@@ -5,7 +5,7 @@ const UserCard = ({ user, onSwipe, currentIndex, totalCards, style }) => {
   const [startX, setStartX] = useState(0);
   const [currentX, setCurrentX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState(null);
+  const [swipeDirection, setSсwipeDirection] = useState(null);
 
   if (!user) return null;
 

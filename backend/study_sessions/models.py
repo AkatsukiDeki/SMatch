@@ -7,6 +7,7 @@ class StudySession(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     subject = models.ForeignKey('matching.Subject', on_delete=models.CASCADE, null=True, blank=True)
+    subject_name = models.CharField(max_length=100, blank=True)  # ДУБЛИРУЮЩЕЕ ПОЛЕ
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_sessions')
     scheduled_time = models.DateTimeField()
     duration_minutes = models.IntegerField(default=60)
@@ -14,12 +15,14 @@ class StudySession(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        """Автоматически заполняем subject_name при сохранении"""
+        if self.subject:
+            self.subject_name = self.subject.name
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.title} - {self.scheduled_time}"
-
-    @property
-    def subject_name(self):
-        return self.subject.name if self.subject else ""
 
     @property
     def current_participants_count(self):
@@ -29,6 +32,7 @@ class StudySession(models.Model):
     def available_slots(self):
         return self.max_participants - self.current_participants_count
 
+# Остальной код SessionParticipant без изменений
 class SessionParticipant(models.Model):
     """Участник учебной сессии"""
     session = models.ForeignKey(StudySession, on_delete=models.CASCADE, related_name='participants')
@@ -41,3 +45,22 @@ class SessionParticipant(models.Model):
 
     def __str__(self):
         return f"{self.user.username} in {self.session.title}"
+
+class SessionInvitation(models.Model):
+    """Приглашение на учебную сессию"""
+    session = models.ForeignKey(StudySession, on_delete=models.CASCADE, related_name='invitations')
+    inviter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_invitations')
+    invitee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_invitations')
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Ожидает ответа'),
+        ('accepted', 'Принято'),
+        ('declined', 'Отклонено')
+    ], default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ['session', 'invitee']
+
+    def __str__(self):
+        return f"Invitation: {self.inviter} -> {self.invitee} for {self.session}"

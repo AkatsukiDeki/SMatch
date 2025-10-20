@@ -1,3 +1,4 @@
+// src/pages/Chat.js - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { chatAPI, studySessionsAPI } from '../services/api';
@@ -9,12 +10,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import './Chat.css';
 
 const Chat = () => {
-  const { user, loading: authLoading } = useAuth(); // Получаем состояние загрузки
+  const { user, loading: authLoading } = useAuth();
   const [chatRooms, setChatRooms] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [otherUserProfile, setOtherUserProfile] = useState(null);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const messagesEndRef = useRef(null);
@@ -33,7 +35,7 @@ const Chat = () => {
     return () => {
       WebSocketService.disconnect();
     };
-  }, [location, authLoading, user]); // Добавлены зависимости
+  }, [location, authLoading, user]);
 
   useEffect(() => {
     // Настраиваем WebSocket только когда выбран чат И пользователь загружен
@@ -59,8 +61,9 @@ const Chat = () => {
   const handleNewMessage = (messageData) => {
     if (!selectedChat || !user) return;
 
+    // Проверяем, что сообщение для текущего чата
     const newMessage = {
-      id: Date.now(),
+      id: Date.now(), // Временный ID до сохранения на сервере
       sender: messageData.username === user.username ? user.id : selectedChat.other_user,
       content: messageData.message,
       timestamp: new Date().toISOString(),
@@ -72,7 +75,13 @@ const Chat = () => {
     // Обновляем список чатов (последнее сообщение)
     setChatRooms(prev => prev.map(chat =>
       chat.id === selectedChat.id
-        ? { ...chat, last_message: newMessage }
+        ? {
+            ...chat,
+            last_message: {
+              content: messageData.message,
+              timestamp: new Date().toISOString()
+            }
+          }
         : chat
     ));
   };
@@ -80,10 +89,12 @@ const Chat = () => {
   const loadChatRooms = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await chatAPI.getChatRooms();
       setChatRooms(response.data);
     } catch (error) {
       console.error('Ошибка загрузки чатов:', error);
+      setError('Не удалось загрузить чаты');
     } finally {
       setLoading(false);
     }
@@ -91,10 +102,12 @@ const Chat = () => {
 
   const loadMessages = async (chatRoomId) => {
     try {
+      setError('');
       const response = await chatAPI.getMessages(chatRoomId);
       setMessages(response.data);
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
+      setError('Не удалось загрузить сообщения');
     }
   };
 
@@ -105,10 +118,13 @@ const Chat = () => {
 
     if (!sent) {
       try {
+        // Fallback: отправка через HTTP если WebSocket не доступен
         await chatAPI.sendMessage(selectedChat.id, { content });
+        // Перезагружаем сообщения
         loadMessages(selectedChat.id);
       } catch (error) {
         console.error('Ошибка отправки сообщения:', error);
+        setError('Не удалось отправить сообщение');
       }
     }
   };
@@ -210,7 +226,7 @@ const Chat = () => {
                     }
                   </h3>
                   <span className="chat-status">
-                    {otherUserProfile?.faculty}
+                    {otherUserProfile?.faculty || 'Студент'}
                     <span className="online-status">● онлайн</span>
                   </span>
                 </div>
@@ -224,6 +240,12 @@ const Chat = () => {
                   </button>
                 </div>
               </div>
+
+              {error && (
+                <div className="error-message" style={{margin: '10px'}}>
+                  {error}
+                </div>
+              )}
 
               <MessageList
                 messages={messages}

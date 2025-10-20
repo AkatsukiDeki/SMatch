@@ -1,3 +1,4 @@
+// src/context/AuthContext.js - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
@@ -38,7 +39,6 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
-  // Функция для обновления данных пользователя
   const refreshUser = async () => {
     try {
       console.log('🔄 Обновление данных пользователя...');
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-    refreshUser, // ✅ Теперь эта функция точно есть!
+    refreshUser,
     loading,
     error,
     clearError

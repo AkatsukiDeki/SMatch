@@ -1,3 +1,7 @@
+# manage.py - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+import warnings
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os

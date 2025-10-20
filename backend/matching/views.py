@@ -58,7 +58,7 @@ def delete_user_subject(request, subject_id):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])  # ИСПРАВЛЕНО: IsAuthenticated вместо AllowAny
 def get_recommendations(request):
     """Получить рекомендации пользователей для мэтчинга с фильтрами"""
     # Получаем параметры фильтрации из query parameters
@@ -66,64 +66,71 @@ def get_recommendations(request):
     year_filter = request.GET.get('year', '')
     subject_id_filter = request.GET.get('subject_id', '')
 
-    # Базовая логика рекомендаций - пользователи с общих предметов
-    user_subjects = UserSubject.objects.filter(user=request.user).values_list('subject', flat=True)
+    try:
+        # Базовая логика рекомендаций - пользователи с общих предметов
+        user_subjects = UserSubject.objects.filter(user=request.user).values_list('subject', flat=True)
 
-    # Исключаем уже просмотренных пользователей и себя
-    swiped_users = Swipe.objects.filter(swiper=request.user).values_list('swiped_user', flat=True)
+        # Исключаем уже просмотренных пользователей и себя
+        swiped_users = Swipe.objects.filter(swiper=request.user).values_list('swiped_user', flat=True)
 
-    recommended_users = User.objects.exclude(
-        Q(id=request.user.id) |
-        Q(id__in=swiped_users)
-    ).filter(
-        user_subjects__subject__in=user_subjects
-    ).select_related('profile').distinct()
+        recommended_users = User.objects.exclude(
+            Q(id=request.user.id) |
+            Q(id__in=swiped_users)
+        ).filter(
+            user_subjects__subject__in=user_subjects
+        ).select_related('profile').distinct()
 
-    # Применяем фильтры если они указаны
-    if faculty_filter:
-        recommended_users = recommended_users.filter(profile__faculty__icontains=faculty_filter)
+        # Применяем фильтры если они указаны
+        if faculty_filter:
+            recommended_users = recommended_users.filter(profile__faculty__icontains=faculty_filter)
 
-    if year_filter:
-        recommended_users = recommended_users.filter(profile__year_of_study=year_filter)
+        if year_filter:
+            recommended_users = recommended_users.filter(profile__year_of_study=year_filter)
 
-    if subject_id_filter:
-        recommended_users = recommended_users.filter(user_subjects__subject_id=subject_id_filter)
+        if subject_id_filter:
+            recommended_users = recommended_users.filter(user_subjects__subject_id=subject_id_filter)
 
-    recommended_users = recommended_users[:10]  # Ограничиваем 10 рекомендациями
+        recommended_users = recommended_users[:10]  # Ограничиваем 10 рекомендациями
 
-    # Создаем список профилей для сериализации
-    profiles_data = []
-    for user in recommended_users:
-        try:
-            profile = user.profile
-            # Получаем предметы пользователя
-            user_subjects_list = UserSubject.objects.filter(user=user).select_related('subject')
-            subjects_data = [
-                {
-                    'id': us.subject.id,
-                    'name': us.subject.name,
-                    'level': us.level
-                }
-                for us in user_subjects_list
-            ]
+        # Создаем список профилей для сериализации
+        profiles_data = []
+        for user in recommended_users:
+            try:
+                profile = user.profile
+                # Получаем предметы пользователя
+                user_subjects_list = UserSubject.objects.filter(user=user).select_related('subject')
+                subjects_data = [
+                    {
+                        'id': us.subject.id,
+                        'name': us.subject.name,
+                        'level': us.level
+                    }
+                    for us in user_subjects_list
+                ]
 
-            profiles_data.append({
-                'id': user.id,
-                'username': user.username,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'faculty': profile.faculty,
-                'year_of_study': profile.year_of_study,
-                'study_level': profile.study_level,
-                'bio': profile.bio,
-                'subjects': subjects_data
-            })
-        except Exception as e:
-            print(f"Error processing user {user.username}: {e}")
-            continue
+                profiles_data.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'first_name': user.first_name or '',
+                    'last_name': user.last_name or '',
+                    'faculty': profile.faculty,
+                    'year_of_study': profile.year_of_study,
+                    'study_level': profile.study_level,
+                    'bio': profile.bio,
+                    'subjects': subjects_data
+                })
+            except Exception as e:
+                print(f"Error processing user {user.username}: {e}")
+                continue
 
-    serializer = SimpleProfileSerializer(profiles_data, many=True)
-    return Response(serializer.data)
+        from core.serializers import SimpleProfileSerializer
+        serializer = SimpleProfileSerializer(profiles_data, many=True)
+        return Response(serializer.data)
+
+    except Exception as e:
+        print(f"Error in get_recommendations: {e}")
+        return Response({'error': 'Internal server error'}, status=500)
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

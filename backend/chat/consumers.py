@@ -1,7 +1,7 @@
-# chat/consumers.py
+# chat/consumers.py - ОБНОВЛЯЕМ
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
 from .models import ChatRoom, Message
 from django.contrib.auth.models import User
 
@@ -15,17 +15,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Проверяем существование чат-комнаты
             room_exists = await self.chat_room_exists(self.chat_room_id)
             if not room_exists:
-                await self.close()
+                await self.close(code=4001)
                 return
 
+            # Принимаем соединение ДО проверки авторизации для тестирования
             await self.channel_layer.group_add(
                 self.room_group_name,
                 self.channel_name
             )
             await self.accept()
+            print(f"✅ WebSocket connected to room {self.chat_room_id}")
+
         except Exception as e:
-            print(f"WebSocket connect error: {e}")
-            await self.close()
+            print(f"❌ WebSocket connect error: {e}")
+            await self.close(code=4000)
 
     async def disconnect(self, close_code):
         try:
@@ -33,6 +36,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.room_group_name,
                 self.channel_name
             )
+            print(f"🔌 WebSocket disconnected from room {self.chat_room_id}")
         except Exception as e:
             print(f"WebSocket disconnect error: {e}")
 
@@ -76,14 +80,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'error': 'Internal server error'
             }))
 
-    @sync_to_async
+    async def chat_message(self, event):
+        try:
+            await self.send(text_data=json.dumps({
+                'message': event['message'],
+                'username': event['username']
+            }))
+        except Exception as e:
+            print(f"Error sending message: {e}")
+
+    @database_sync_to_async
     def chat_room_exists(self, chat_room_id):
         try:
             return ChatRoom.objects.filter(id=chat_room_id, is_active=True).exists()
         except Exception:
             return False
 
-    @sync_to_async
+    @database_sync_to_async
     def save_message(self, username, chat_room_id, content):
         try:
             user = User.objects.get(username=username)
@@ -104,12 +117,3 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print(f"Error saving message: {e}")
             return False
-
-    async def chat_message(self, event):
-        try:
-            await self.send(text_data=json.dumps({
-                'message': event['message'],
-                'username': event['username']
-            }))
-        except Exception as e:
-            print(f"Error sending message: {e}")

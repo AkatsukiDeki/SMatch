@@ -1,4 +1,4 @@
-// src/services/api.js
+// src/services/api.js - ОБНОВЛЯЕМ С ОТЛАДКОЙ
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
@@ -6,24 +6,54 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  //withCredentials: true,
 });
 
-// Добавляем токен к запросам
+// Добавляем токен к запросам с отладкой
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
+
+  console.log('🔐 API Request:', {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    hasToken: !!token,
+    withCredentials: config.withCredentials
+  });
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('✅ Authorization header set with token');
+  } else {
+    console.log('❌ No token found in localStorage');
   }
+
+  console.log('📋 Request headers:', config.headers);
   return config;
 });
 
-// Обработка ошибок и автоматическое обновление токена
+// Обработка ошибок с детальной отладкой
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('✅ API Response Success:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
+    return response;
+  },
   async (error) => {
+    console.error('❌ API Response Error:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase(),
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
+
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      console.log('🔄 Attempting token refresh...');
       originalRequest._retry = true;
 
       try {
@@ -37,10 +67,11 @@ api.interceptors.response.use(
           localStorage.setItem('access_token', access);
           originalRequest.headers.Authorization = `Bearer ${access}`;
 
+          console.log('✅ Token refreshed successfully');
           return api(originalRequest);
         }
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
+        console.error('❌ Token refresh failed:', refreshError);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         window.location.href = '/login';
@@ -51,22 +82,10 @@ api.interceptors.response.use(
   }
 );
 
-// API endpoints
+// API endpoints остаются без изменений
 export const authAPI = {
   login: (credentials) => api.post('/auth/login/', credentials),
-
-  register: (userData) => {
-    // Формируем данные в правильном формате для Django
-    const registerData = {
-      username: userData.username,
-      password: userData.password,
-      email: userData.email,
-      first_name: userData.first_name || '',
-      last_name: userData.last_name || ''
-    };
-    return api.post('/auth/register/', registerData);
-  },
-
+  register: (userData) => api.post('/auth/register/', userData),
   refreshToken: (token) => api.post('/auth/token/refresh/', token),
   getProfile: () => api.get('/auth/profile/'),
   updateProfile: (profileData) => api.put('/auth/profile/update/', profileData),
@@ -99,9 +118,10 @@ export const chatAPI = {
   createChatRoom: (userId) => api.post(`/chat/rooms/create/${userId}/`),
 };
 
+// src/services/api.js - ИСПРАВЛЯЕМ ПУТИ
 export const studySessionsAPI = {
   // Сессии
-  createSession: (sessionData) => api.post('/study-sessions/', sessionData),
+  createSession: (sessionData) => api.post('/study-sessions/create/', sessionData),  // ДОБАВИЛИ /create/
   getSessions: (params = {}) => api.get('/study-sessions/', { params }),
   getSession: (id) => api.get(`/study-sessions/${id}/`),
   getMySessions: () => api.get('/study-sessions/my-sessions/'),
@@ -109,15 +129,15 @@ export const studySessionsAPI = {
   leaveSession: (sessionId) => api.post(`/study-sessions/leave/${sessionId}/`),
   deleteSession: (sessionId) => api.delete(`/study-sessions/delete/${sessionId}/`),
 
-  // Приглашения
+  // Приглашения - ИСПРАВЛЯЕМ ПУТИ
   sendInvitation: (sessionId, userId) =>
     api.post(`/study-sessions/${sessionId}/invitations/`, { user_id: userId }),
 
   getInvitations: () =>
-    api.get('/study-session-invitations/'),
+    api.get('/study-sessions/invitations/'),  // ИСПРАВИЛИ ПУТЬ
 
   respondToInvitation: (invitationId, response) =>
-    api.post(`/study-session-invitations/${invitationId}/respond/`, { response }),
+    api.post(`/study-sessions/invitations/${invitationId}/respond/`, { response }),
 
   getSessionParticipants: (sessionId) =>
     api.get(`/study-sessions/${sessionId}/participants/`),

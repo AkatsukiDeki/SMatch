@@ -6,7 +6,6 @@ import './Home.css';
 const Home = () => {
   const { user, loading } = useAuth();
 
-  // Показываем загрузку пока проверяется аутентификация
   if (loading) {
     return (
       <div className="home-page">
@@ -18,72 +17,71 @@ const Home = () => {
     );
   }
 
-  console.log('Home component - User:', user);
-  console.log('Home component - Loading:', loading);
-
   return (
     <div className="home-page">
       <section className="hero">
-        <h1>Добро пожаловать в StudyMatch</h1>
-        <p>Найдите идеального партнера для совместного обучения</p>
+        <div className="hero-content">
+          <h1>Добро пожаловать в StudyMatch</h1>
+          <p>Найдите идеального партнера для совместного обучения</p>
 
-        {user ? (
-          <div className="user-welcome">
-            <h2>Привет, {user.username}!</h2>
-            <p>Рады снова видеть вас!</p>
-            <div className="action-buttons">
-              <Link to="/matching" className="btn btn-primary">
-                🔍 Найти партнеров
-              </Link>
-              <Link to="/chat" className="btn btn-secondary">
-                💬 Перейти в чат
-              </Link>
-              <Link to="/profile" className="btn btn-outline">
-                👤 Мой профиль
-              </Link>
+          {user ? (
+            <div className="user-welcome">
+              <h2>Привет, {user.first_name || user.username}!</h2>
+              <p>Рады снова видеть вас! Что хотите сделать?</p>
+              <div className="action-buttons">
+                <Link to="/matching" className="btn btn-primary">
+                  <span className="btn-icon">🔍</span>
+                  Найти партнеров
+                </Link>
+                <Link to="/chat" className="btn btn-secondary">
+                  <span className="btn-icon">💬</span>
+                  Перейти в чат
+                </Link>
+                <Link to="/sessions" className="btn btn-accent">
+                  <span className="btn-icon">📚</span>
+                  Учебные сессии
+                </Link>
+                <Link to="/profile" className="btn btn-outline">
+                  <span className="btn-icon">👤</span>
+                  Мой профиль
+                </Link>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="guest-actions">
-            <p>Присоединяйтесь к сообществу студентов для совместного обучения</p>
-            <div className="action-buttons">
-              <Link to="/register" className="btn btn-primary">
-                🚀 Начать сейчас
-              </Link>
-              <Link to="/login" className="btn btn-secondary">
-                🔑 Уже есть аккаунт
-              </Link>
+          ) : (
+            <div className="guest-actions">
+              <p>Присоединяйтесь к сообществу студентов для совместного обучения</p>
+              <div className="action-buttons">
+                <Link to="/register" className="btn btn-primary">
+                  <span className="btn-icon">🚀</span>
+                  Начать сейчас
+                </Link>
+                <Link to="/login" className="btn btn-secondary">
+                  <span className="btn-icon">🔑</span>
+                  Уже есть аккаунт
+                </Link>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       <section className="features">
-        <div className="feature">
-          <div className="feature-icon">🔍</div>
+        <div className="feature-card">
+          <div className="feature-icon">🎯</div>
           <h3>Умный подбор</h3>
-          <p>Находите студентов с похожими интересами и целями обучения</p>
+          <p>Алгоритмы находят студентов с похожими интересами и целями обучения</p>
         </div>
-        <div className="feature">
+        <div className="feature-card">
           <div className="feature-icon">💬</div>
-          <h3>Общение</h3>
+          <h3>Общение в реальном времени</h3>
           <p>Удобный чат для обсуждения учебных вопросов и материалов</p>
         </div>
-        <div className="feature">
-          <div className="feature-icon">📚</div>
+        <div className="feature-card">
+          <div className="feature-icon">📅</div>
           <h3>Совместные сессии</h3>
           <p>Организуйте учебные встречи и делитесь знаниями с партнерами</p>
         </div>
       </section>
-
-      {/* Добавляем отладочную информацию (можно убрать после тестирования) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="debug-info" style={{marginTop: '2rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px'}}>
-          <h4>Отладочная информация:</h4>
-          <p><strong>Пользователь:</strong> {user ? JSON.stringify(user) : 'не авторизован'}</p>
-          <p><strong>Токен в localStorage:</strong> {localStorage.getItem('access_token') ? 'есть' : 'нет'}</p>
-        </div>
-      )}
     </div>
   );
 };
