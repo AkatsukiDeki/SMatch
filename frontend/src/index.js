@@ -5,6 +5,8 @@ import App from './App.js';
 import './index.css';
 import './responsive.css';
 
+
+
 // Создаем корневой элемент React 18
 const root = ReactDOM.createRoot(document.getElementById('root'));
 

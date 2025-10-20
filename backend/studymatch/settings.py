@@ -25,8 +25,13 @@ SECRET_KEY = 'django-insecure--=ef1p!7y0@xz4fu9u%%%$9e0h=ftvchy0p(r9ncw%s@lt)x4l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '192.168.0.102',  # ваш IP
+    '.ngrok.io',       # для ngrok
+]
 
 # Application definition
 
@@ -34,17 +39,20 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    'django.contrib.sessions',  # ← Это ВСТРОЕННОЕ приложение Django
+    'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
-    'users',
-    'matching',
-    'chat',
-    'study_sessions',  # ← Это мое переименованное приложение
-    'rest_framework_simplejwt',
+    'channels',
 
+    # Ваши приложения
+    'core.apps.CoreConfig',  # ДОБАВЬТЕ ЭТУ СТРОЧКУ
+    'users.apps.UsersConfig',
+    'matching.apps.MatchingConfig',
+    'chat.apps.ChatConfig',
+    'study_sessions.apps.StudySessionsConfig',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -90,12 +98,9 @@ DATABASES = {
 
 # Настройки DRF
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    )
+    ],
 }
 
 # Password validation
@@ -120,8 +125,11 @@ AUTH_PASSWORD_VALIDATORS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://localhost:3001",  # Добавляем порт 3001
+    "http://localhost:3001",
     "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -175,3 +183,11 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+ASGI_APPLICATION = 'studymatch.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}

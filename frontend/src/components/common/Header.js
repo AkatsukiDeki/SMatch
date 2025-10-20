@@ -1,149 +1,62 @@
 // src/components/common/Header.js
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { studySessionsAPI } from '../../services/api';
 import './Header.css';
 
 const Header = () => {
   const { user, logout } = useAuth();
-  const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState(0);
 
-  const isActive = (path) => location.pathname === path;
+  useEffect(() => {
+    if (user) {
+      loadPendingInvitations();
+    }
+  }, [user]);
 
-  const handleLogout = () => {
-    logout();
-    setIsMobileMenuOpen(false);
+  const loadPendingInvitations = async () => {
+    try {
+      const response = await studySessionsAPI.getInvitations();
+      const pending = response.data.filter(inv => inv.status === 'pending').length;
+      setPendingInvitations(pending);
+    } catch (error) {
+      console.error('Error loading invitations:', error);
+    }
   };
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
     <header className="header">
-      <div className="header-container">
-        <Link to="/" className="logo-link" onClick={closeMobileMenu}>
-          <span className="logo-icon">📚</span>
-          <span className="logo-text">StudyMatch</span>
+      <div className="header-content">
+        <Link to="/" className="logo">
+          StudyMatch
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="nav-desktop">
+        <nav className="nav">
           {user ? (
             <>
-              <Link
-                to="/matching"
-                className={`nav-link ${isActive('/matching') ? 'active' : ''}`}
-              >
-                🔍 Поиск
-              </Link>
-              <Link
-                to="/chat"
-                className={`nav-link ${isActive('/chat') ? 'active' : ''}`}
-              >
-                💬 Чаты
-              </Link>
-              <Link
-                to="/sessions"
-                className={`nav-link ${isActive('/sessions') ? 'active' : ''}`}
-              >
+              <Link to="/matching" className="nav-link">🔍 Поиск</Link>
+              <Link to="/chat" className="nav-link">💬 Чат</Link>
+              <Link to="/sessions" className="nav-link">
                 📚 Сессии
+                {pendingInvitations > 0 && (
+                  <span className="notification-badge">{pendingInvitations}</span>
+                )}
               </Link>
-              <Link
-                to="/profile"
-                className={`nav-link ${isActive('/profile') ? 'active' : ''}`}
-              >
-                👤 Профиль
-              </Link>
-              <button onClick={handleLogout} className="logout-btn">
+              <Link to="/profile" className="nav-link">👤 Профиль</Link>
+              <button onClick={logout} className="logout-btn">
                 Выйти
               </button>
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className={`nav-link ${isActive('/login') ? 'active' : ''}`}
-              >
-                Войти
-              </Link>
-              <Link
-                to="/register"
-                className="nav-link register"
-              >
+              <Link to="/login" className="nav-link">Войти</Link>
+              <Link to="/register" className="nav-link register-btn">
                 Регистрация
               </Link>
             </>
           )}
         </nav>
-
-        {/* Mobile Menu Button */}
-        <button
-          className="mobile-menu-btn"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          ☰
-        </button>
-
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <nav className="nav-mobile">
-            {user ? (
-              <>
-                <Link
-                  to="/matching"
-                  className="nav-link"
-                  onClick={closeMobileMenu}
-                >
-                  🔍 Поиск партнера
-                </Link>
-                <Link
-                  to="/chat"
-                  className="nav-link"
-                  onClick={closeMobileMenu}
-                >
-                  💬 Мои чаты
-                </Link>
-                <Link
-                  to="/sessions"
-                  className="nav-link"
-                  onClick={closeMobileMenu}
-                >
-                  📚 Учебные сессии
-                </Link>
-                <Link
-                  to="/profile"
-                  className="nav-link"
-                  onClick={closeMobileMenu}
-                >
-                  👤 Мой профиль
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="logout-btn mobile"
-                >
-                  🚪 Выйти
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="nav-link"
-                  onClick={closeMobileMenu}
-                >
-                  Войти в аккаунт
-                </Link>
-                <Link
-                  to="/register"
-                  className="nav-link"
-                  onClick={closeMobileMenu}
-                >
-                  Создать аккаунт
-                </Link>
-              </>
-            )}
-          </nav>
-        )}
       </div>
     </header>
   );

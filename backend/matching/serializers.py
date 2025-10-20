@@ -1,13 +1,12 @@
 # matching/serializers.py
 from rest_framework import serializers
+from core.serializers import SimpleProfileSerializer, SimpleSubjectSerializer
 from .models import Subject, UserSubject, Swipe, Match
-
 
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
         fields = ['id', 'name', 'description', 'code']
-
 
 class UserSubjectSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
@@ -21,19 +20,6 @@ class UserSubjectSerializer(serializers.ModelSerializer):
         model = UserSubject
         fields = ['id', 'subject', 'subject_id', 'level', 'created_at']
 
-
-class SimpleProfileSerializer(serializers.Serializer):
-    """Упрощенный сериализатор профиля для рекомендаций"""
-    id = serializers.IntegerField()
-    username = serializers.CharField()
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    faculty = serializers.CharField()
-    year_of_study = serializers.IntegerField()
-    study_level = serializers.CharField()  # ДОБАВЛЯЕМ
-    bio = serializers.CharField()
-
-
 class SwipeSerializer(serializers.ModelSerializer):
     swiped_user_profile = serializers.SerializerMethodField()
 
@@ -44,19 +30,20 @@ class SwipeSerializer(serializers.ModelSerializer):
 
     def get_swiped_user_profile(self, obj):
         try:
-            profile = obj.swiped_user.profile
-            return SimpleProfileSerializer({
+            profile_data = {
                 'id': obj.swiped_user.id,
                 'username': obj.swiped_user.username,
                 'first_name': obj.swiped_user.first_name,
                 'last_name': obj.swiped_user.last_name,
-                'faculty': profile.faculty,
-                'year_of_study': profile.year_of_study,
-                'bio': profile.bio
-            }).data
-        except:
+                'faculty': obj.swiped_user.profile.faculty if hasattr(obj.swiped_user, 'profile') else '',
+                'year_of_study': obj.swiped_user.profile.year_of_study if hasattr(obj.swiped_user, 'profile') else None,
+                'study_level': obj.swiped_user.profile.study_level if hasattr(obj.swiped_user, 'profile') else '',
+                'bio': obj.swiped_user.profile.bio if hasattr(obj.swiped_user, 'profile') else ''
+            }
+            return SimpleProfileSerializer(profile_data).data
+        except Exception as e:
+            print(f"Error getting swiped user profile: {e}")
             return None
-
 
 class MatchSerializer(serializers.ModelSerializer):
     other_user = serializers.SerializerMethodField()
@@ -80,21 +67,22 @@ class MatchSerializer(serializers.ModelSerializer):
         if request and request.user:
             try:
                 if obj.user1 == request.user:
-                    profile = obj.user2.profile
                     user = obj.user2
                 else:
-                    profile = obj.user1.profile
                     user = obj.user1
 
-                return SimpleProfileSerializer({
+                profile_data = {
                     'id': user.id,
                     'username': user.username,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
-                    'faculty': profile.faculty,
-                    'year_of_study': profile.year_of_study,
-                    'bio': profile.bio
-                }).data
-            except:
+                    'faculty': user.profile.faculty if hasattr(user, 'profile') else '',
+                    'year_of_study': user.profile.year_of_study if hasattr(user, 'profile') else None,
+                    'study_level': user.profile.study_level if hasattr(user, 'profile') else '',
+                    'bio': user.profile.bio if hasattr(user, 'profile') else ''
+                }
+                return SimpleProfileSerializer(profile_data).data
+            except Exception as e:
+                print(f"Error getting other user profile: {e}")
                 return None
         return None

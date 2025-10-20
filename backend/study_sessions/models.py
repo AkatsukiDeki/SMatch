@@ -2,13 +2,11 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-
 class StudySession(models.Model):
     """Учебная сессия"""
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    # Убираем ForeignKey чтобы избежать циклических импортов
-    subject_name = models.CharField(max_length=100, blank=True)  # Вместо ForeignKey
+    subject = models.ForeignKey('matching.Subject', on_delete=models.CASCADE, null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_sessions')
     scheduled_time = models.DateTimeField()
     duration_minutes = models.IntegerField(default=60)
@@ -20,13 +18,16 @@ class StudySession(models.Model):
         return f"{self.title} - {self.scheduled_time}"
 
     @property
+    def subject_name(self):
+        return self.subject.name if self.subject else ""
+
+    @property
     def current_participants_count(self):
         return self.participants.filter(is_active=True).count()
 
     @property
     def available_slots(self):
         return self.max_participants - self.current_participants_count
-
 
 class SessionParticipant(models.Model):
     """Участник учебной сессии"""

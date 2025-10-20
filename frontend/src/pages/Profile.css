@@ -1,8 +1,7 @@
-/* src/pages/Profile.css */
 .profile-page {
-  padding: 2rem;
   max-width: 800px;
   margin: 0 auto;
+  padding: 2rem;
 }
 
 .profile-header {
@@ -10,101 +9,429 @@
   margin-bottom: 2rem;
 }
 
+.profile-header h1 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+}
+
+.profile-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.tab {
+  padding: 1rem 2rem;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.tab.active {
+  background: #3498db;
+  color: white;
+  border-color: #3498db;
+}
+
+.tab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Сообщения */
+.message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.message.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Форма редактирования */
+.profile-edit {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.form-section {
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.form-section h3 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+.save-btn {
+  width: 100%;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.save-btn:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Просмотр профиля */
+.profile-view {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.profile-card {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
 .profile-avatar {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 4rem;
-  margin: 0 auto 1rem;
+  font-size: 3rem;
+  font-weight: bold;
+  flex-shrink: 0;
 }
 
 .profile-info {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  flex: 1;
 }
 
-.info-section {
-  margin-bottom: 2rem;
-}
-
-.info-section h3 {
+.profile-info h2 {
   color: #2c3e50;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+}
+
+.username {
+  color: #666;
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
+  margin-bottom: 2rem;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #f8f9fa;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
-.info-label {
-  font-weight: bold;
-  color: #666;
-}
-
-.info-value {
+.info-item .label {
+  font-weight: 600;
   color: #2c3e50;
 }
 
-.subjects-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.info-item .value {
+  color: #666;
 }
 
-.subject-badge {
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
+.bio-section {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
 }
 
-.edit-profile-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: block;
-  margin: 2rem auto 0;
+.bio-section h4 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
 }
 
-.edit-profile-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+.bio-section p {
+  color: #666;
+  line-height: 1.6;
+  font-style: italic;
 }
 
+/* Адаптивность */
 @media (max-width: 768px) {
   .profile-page {
     padding: 1rem;
   }
 
-  .profile-info {
-    padding: 1rem;
+  .profile-tabs {
+    flex-direction: column;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .profile-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profile-avatar {
+    align-self: center;
   }
 
   .info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .info-item {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+}
+
+/* Стили для управления предметами */
+.subjects-management {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.add-subject-form {
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.add-subject-form h3 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+}
+
+.subject-form .form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.add-btn {
+  padding: 1rem 2rem;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-btn:hover {
+  background: #219653;
+  transform: translateY(-2px);
+}
+
+.user-subjects-list h3 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+}
+
+.no-subjects {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.subject-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.subject-info h4 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+}
+
+.level-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.level-badge.beginner {
+  background: #e8f5e8;
+  color: #27ae60;
+}
+
+.level-badge.intermediate {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.level-badge.advanced {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.remove-btn:hover {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* Секция предметов в просмотре профиля */
+.subjects-section {
+  margin-top: 2rem;
+}
+
+.subjects-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.subject-tag {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  border: 1px solid #bbdefb;
+}
+
+/* Адаптивность для предметов */
+@media (max-width: 768px) {
+  .subject-form .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .subjects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subject-card {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .subjects-tags {
+    justify-content: center;
   }
 }

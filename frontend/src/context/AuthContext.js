@@ -1,4 +1,3 @@
-// src/context/AuthContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
@@ -23,12 +22,15 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem('access_token');
+    console.log('🔐 Проверка аутентификации, токен:', token ? 'есть' : 'нет');
+
     if (token) {
       try {
         const response = await authAPI.getProfile();
+        console.log('✅ Пользователь авторизован:', response.data);
         setUser(response.data);
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('❌ Ошибка проверки аутентификации:', error);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
       }
@@ -36,28 +38,43 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  // Функция для обновления данных пользователя
+  const refreshUser = async () => {
+    try {
+      console.log('🔄 Обновление данных пользователя...');
+      const response = await authAPI.getProfile();
+      setUser(response.data);
+      console.log('✅ Данные пользователя обновлены:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Ошибка обновления пользователя:', error);
+      throw error;
+    }
+  };
+
   const login = async (credentials) => {
-  try {
-    setError('');
-    const response = await authAPI.login(credentials);
-    console.log('Ответ от сервера при входе:', response.data);
+    try {
+      setError('');
+      console.log('🔐 Попытка входа...');
+      const response = await authAPI.login(credentials);
+      console.log('✅ Успешный вход:', response.data);
 
-    const { access, refresh, user } = response.data;
+      const { access, refresh, user } = response.data;
 
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
-    setUser(user);
+      localStorage.setItem('access_token', access);
+      localStorage.setItem('refresh_token', refresh);
+      setUser(user);
 
-    return response;
-  } catch (error) {
-    console.error('Ошибка в AuthContext.login:', error);
-    const message = error.response?.data?.error ||
-                   error.response?.data?.detail ||
-                   'Ошибка входа';
-    setError(message);
-    throw error;
-  }
-};
+      return response;
+    } catch (error) {
+      console.error('❌ Ошибка входа:', error);
+      const message = error.response?.data?.error ||
+                     error.response?.data?.detail ||
+                     'Ошибка входа';
+      setError(message);
+      throw error;
+    }
+  };
 
   const register = async (userData) => {
     try {
@@ -80,6 +97,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('🚪 Выход из системы');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setUser(null);
@@ -87,6 +105,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (userData) => {
+    console.log('✏️ Обновление состояния пользователя:', userData);
     setUser(prevUser => ({ ...prevUser, ...userData }));
   };
 
@@ -100,6 +119,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    refreshUser, // ✅ Теперь эта функция точно есть!
     loading,
     error,
     clearError

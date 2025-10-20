@@ -58,9 +58,14 @@ def delete_user_subject(request, subject_id):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_recommendations(request):
-    """Получить рекомендации пользователей для мэтчинга"""
+    """Получить рекомендации пользователей для мэтчинга с фильтрами"""
+    # Получаем параметры фильтрации из query parameters
+    faculty_filter = request.GET.get('faculty', '')
+    year_filter = request.GET.get('year', '')
+    subject_id_filter = request.GET.get('subject_id', '')
+
     # Базовая логика рекомендаций - пользователи с общих предметов
     user_subjects = UserSubject.objects.filter(user=request.user).values_list('subject', flat=True)
 
@@ -72,13 +77,36 @@ def get_recommendations(request):
         Q(id__in=swiped_users)
     ).filter(
         user_subjects__subject__in=user_subjects
-    ).distinct()[:10]  # Ограничиваем 10 рекомендациями
+    ).select_related('profile').distinct()
+
+    # Применяем фильтры если они указаны
+    if faculty_filter:
+        recommended_users = recommended_users.filter(profile__faculty__icontains=faculty_filter)
+
+    if year_filter:
+        recommended_users = recommended_users.filter(profile__year_of_study=year_filter)
+
+    if subject_id_filter:
+        recommended_users = recommended_users.filter(user_subjects__subject_id=subject_id_filter)
+
+    recommended_users = recommended_users[:10]  # Ограничиваем 10 рекомендациями
 
     # Создаем список профилей для сериализации
     profiles_data = []
     for user in recommended_users:
         try:
             profile = user.profile
+            # Получаем предметы пользователя
+            user_subjects_list = UserSubject.objects.filter(user=user).select_related('subject')
+            subjects_data = [
+                {
+                    'id': us.subject.id,
+                    'name': us.subject.name,
+                    'level': us.level
+                }
+                for us in user_subjects_list
+            ]
+
             profiles_data.append({
                 'id': user.id,
                 'username': user.username,
@@ -87,15 +115,65 @@ def get_recommendations(request):
                 'faculty': profile.faculty,
                 'year_of_study': profile.year_of_study,
                 'study_level': profile.study_level,
-                'bio': profile.bio
+                'bio': profile.bio,
+                'subjects': subjects_data
             })
-        except:
-            # Если профиль не существует, пропускаем пользователя
+        except Exception as e:
+            print(f"Error processing user {user.username}: {e}")
             continue
 
     serializer = SimpleProfileSerializer(profiles_data, many=True)
     return Response(serializer.data)
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_test_recommendations(request):
+    """Тестовые рекомендации без аутентификации"""
+    test_users = [
+        {
+            'id': 1,
+            'username': 'demo_user1',
+            'first_name': 'Алексей',
+            'last_name': 'Иванов',
+            'faculty': 'Факультет информатики',
+            'year_of_study': 2,
+            'study_level': 'Средний',
+            'bio': 'Ищу партнера для изучения программирования',
+            'subjects': [
+                {'id': 4, 'name': 'Программирование', 'level': 'intermediate'},
+                {'id': 2, 'name': 'Математический анализ', 'level': 'beginner'}
+            ]
+        },
+        {
+            'id': 2,
+            'username': 'demo_user2',
+            'first_name': 'Екатерина',
+            'last_name': 'Смирнова',
+            'faculty': 'Экономический факультет',
+            'year_of_study': 3,
+            'study_level': 'Продвинутый',
+            'bio': 'Помогу с экономикой, ищу помощь с математикой',
+            'subjects': [
+                {'id': 2, 'name': 'Математический анализ', 'level': 'advanced'},
+                {'id': 3, 'name': 'Линейная алгебра', 'level': 'intermediate'}
+            ]
+        },
+        {
+            'id': 3,
+            'username': 'demo_user3',
+            'first_name': 'Дмитрий',
+            'last_name': 'Петров',
+            'faculty': 'Физический факультет',
+            'year_of_study': 1,
+            'study_level': 'Начинающий',
+            'bio': 'Только начал изучать физику, ищу компанию для совместных занятий',
+            'subjects': [
+                {'id': 5, 'name': 'Физика', 'level': 'beginner'},
+                {'id': 3, 'name': 'Линейная алгебра', 'level': 'beginner'}
+            ]
+        }
+    ]
+    return Response(test_users)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -160,3 +238,46 @@ def get_matches(request):
     )
     serializer = MatchSerializer(matches, many=True, context={'request': request})
     return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_mutual_likes(request):
+    """Получить список взаимных лайков (потенциальные чаты)"""
+    # Находим пользователей, которые лайкнули текущего пользователя
+    users_who_liked_me = Swipe.objects.filter(
+        swiped_user=request.user,
+        action='like'
+    ).values_list('swiper', flat=True)
+
+    # Находим, кого лайкнул текущий пользователь из этого списка
+    mutual_likes = Swipe.objects.filter(
+        swiper=request.user,
+        swiped_user__in=users_who_liked_me,
+        action='like'
+    ).select_related('swiped_user', 'swiped_user__profile')
+
+    # Формируем данные для ответа
+    mutual_users_data = []
+    for swipe in mutual_likes:
+        user = swipe.swiped_user
+        try:
+            profile_data = {
+                'id': user.id,
+                'username': user.username,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'faculty': user.profile.faculty if hasattr(user, 'profile') else '',
+                'year_of_study': user.profile.year_of_study if hasattr(user, 'profile') else None,
+                'study_level': user.profile.study_level if hasattr(user, 'profile') else '',
+                'bio': user.profile.bio if hasattr(user, 'profile') else ''
+            }
+            mutual_users_data.append({
+                'user': SimpleProfileSerializer(profile_data).data,
+                'swipe_id': swipe.id,
+                'matched_at': swipe.timestamp
+            })
+        except Exception as e:
+            print(f"Error processing mutual like: {e}")
+            continue
+
+    return Response(mutual_users_data)

@@ -1,19 +1,7 @@
 # chat/serializers.py
 from rest_framework import serializers
+from core.serializers import SimpleProfileSerializer
 from .models import ChatRoom, Message
-
-
-class SimpleProfileSerializer(serializers.Serializer):
-    """Упрощенный сериализатор профиля для чата"""
-    id = serializers.IntegerField(source='user.id')
-    username = serializers.CharField(source='user.username')
-    first_name = serializers.CharField(source='user.first_name')
-    last_name = serializers.CharField(source='user.last_name')
-    faculty = serializers.CharField()
-    year_of_study = serializers.IntegerField()
-    study_level = serializers.CharField()  # ДОБАВЛЯЕМ
-    bio = serializers.CharField()
-
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_profile = serializers.SerializerMethodField()
@@ -25,10 +13,20 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def get_sender_profile(self, obj):
         try:
-            return SimpleProfileSerializer(obj.sender.profile).data
-        except:
+            profile_data = {
+                'id': obj.sender.id,
+                'username': obj.sender.username,
+                'first_name': obj.sender.first_name,
+                'last_name': obj.sender.last_name,
+                'faculty': obj.sender.profile.faculty if hasattr(obj.sender, 'profile') else '',
+                'year_of_study': obj.sender.profile.year_of_study if hasattr(obj.sender, 'profile') else None,
+                'study_level': obj.sender.profile.study_level if hasattr(obj.sender, 'profile') else '',
+                'bio': obj.sender.profile.bio if hasattr(obj.sender, 'profile') else ''
+            }
+            return SimpleProfileSerializer(profile_data).data
+        except Exception as e:
+            print(f"Error getting sender profile: {e}")
             return None
-
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     other_user = serializers.SerializerMethodField()
@@ -54,11 +52,20 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user:
             try:
-                if obj.user1 == request.user:
-                    return SimpleProfileSerializer(obj.user2.profile).data
-                else:
-                    return SimpleProfileSerializer(obj.user1.profile).data
-            except:
+                other_user = obj.user2 if obj.user1 == request.user else obj.user1
+                profile_data = {
+                    'id': other_user.id,
+                    'username': other_user.username,
+                    'first_name': other_user.first_name,
+                    'last_name': other_user.last_name,
+                    'faculty': other_user.profile.faculty if hasattr(other_user, 'profile') else '',
+                    'year_of_study': other_user.profile.year_of_study if hasattr(other_user, 'profile') else None,
+                    'study_level': other_user.profile.study_level if hasattr(other_user, 'profile') else '',
+                    'bio': other_user.profile.bio if hasattr(other_user, 'profile') else ''
+                }
+                return SimpleProfileSerializer(profile_data).data
+            except Exception as e:
+                print(f"Error getting other user profile: {e}")
                 return None
         return None
 

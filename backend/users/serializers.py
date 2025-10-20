@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile, University
+from core.serializers import SimpleProfileSerializer, SimpleSubjectSerializer
 
 
 class UniversitySerializer(serializers.ModelSerializer):
@@ -83,7 +84,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
-            'id', 'university', 'university_id', 'faculty',
-            'year_of_study', 'study_level', 'bio', 'telegram', 'whatsapp', 'phone',
-            'show_contact_info', 'created_at', 'updated_at'
+            'university', 'faculty', 'year_of_study', 'bio',
+            'telegram', 'whatsapp', 'phone', 'show_contact_info'
         ]
+        extra_kwargs = {
+            'university': {'required': False},
+            'faculty': {'required': False},
+            'year_of_study': {'required': False},
+            'bio': {'required': False},
+        }

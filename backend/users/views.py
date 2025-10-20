@@ -102,14 +102,62 @@ def get_universities(request):
 @api_view(['PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def update_profile(request):
-    """Обновление профиля пользователя"""
+    """Обновление профиля пользователя и основных данных"""
     try:
         profile = request.user.profile
+        user = request.user
     except UserProfile.DoesNotExist:
         return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    serializer = UserProfileUpdateSerializer(profile, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(UserProfileSerializer(profile).data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    print(f"📥 Получены данные для обновления: {request.data}")
+
+    try:
+        # ОБНОВЛЯЕМ ПОЛЬЗОВАТЕЛЯ (User модель)
+        if 'first_name' in request.data:
+            user.first_name = request.data['first_name']
+        if 'last_name' in request.data:
+            user.last_name = request.data['last_name']
+        user.save()
+
+        # ОБНОВЛЯЕМ ПРОФИЛЬ (UserProfile модель)
+        if 'faculty' in request.data:
+            profile.faculty = request.data['faculty']
+        if 'year_of_study' in request.data:
+            profile.year_of_study = request.data['year_of_study']
+        if 'bio' in request.data:
+            profile.bio = request.data['bio']
+        if 'university_id' in request.data:
+            profile.university_id = request.data['university_id']
+
+        profile.save()
+
+        print("✅ Профиль и пользователь успешно обновлены")
+
+        # Возвращаем обновленные данные
+        from django.contrib.auth.models import User
+        updated_user = User.objects.select_related('profile').get(id=user.id)
+
+        response_data = {
+            'id': updated_user.id,
+            'username': updated_user.username,
+            'email': updated_user.email,
+            'first_name': updated_user.first_name,
+            'last_name': updated_user.last_name,
+            'profile': {
+                'id': updated_user.profile.id,
+                'faculty': updated_user.profile.faculty,
+                'year_of_study': updated_user.profile.year_of_study,
+                'study_level': updated_user.profile.study_level,
+                'bio': updated_user.profile.bio,
+                'university': {
+                    'id': updated_user.profile.university.id if updated_user.profile.university else None,
+                    'name': updated_user.profile.university.name if updated_user.profile.university else None,
+                } if updated_user.profile.university else None
+            }
+        }
+
+        return Response(response_data)
+
+    except Exception as e:
+        print(f"❌ Ошибка при обновлении: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

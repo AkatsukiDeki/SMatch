@@ -1,14 +1,22 @@
 /* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
-  color: #333;
+  color: #2c3e50;
   background-color: #f8f9fa;
 }
 
@@ -19,15 +27,16 @@ body {
 /* Общие стили для кнопок */
 .btn {
   display: inline-block;
-  padding: 0.8rem 1.5rem;
+  padding: 12px 24px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
   font-weight: 500;
   text-decoration: none;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-family: inherit;
 }
 
 .btn-primary {
@@ -47,20 +56,5 @@ body {
 
 .btn-secondary:hover {
   background: #7f8c8d;
-}
-
-/* Утилитарные классы */
-.text-center {
-  text-align: center;
-}
-
-.mt-1 { margin-top: 1rem; }
-.mt-2 { margin-top: 2rem; }
-.mb-1 { margin-bottom: 1rem; }
-.mb-2 { margin-bottom: 2rem; }
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
+  transform: translateY(-2px);
 }

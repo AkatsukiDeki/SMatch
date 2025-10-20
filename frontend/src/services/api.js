@@ -70,16 +70,26 @@ export const authAPI = {
   refreshToken: (token) => api.post('/auth/token/refresh/', token),
   getProfile: () => api.get('/auth/profile/'),
   updateProfile: (profileData) => api.put('/auth/profile/update/', profileData),
+  getUniversities: () => api.get('/auth/universities/'),
 };
 
 export const matchingAPI = {
-  getRecommendations: () => api.get('/matching/recommendations/'),
-  getMatches: () => api.get('/matching/matches/'),
-  swipe: (userId, action) => api.post(`/matching/swipe/${userId}/`, { action }),
   getSubjects: () => api.get('/matching/subjects/'),
+  getTestRecommendations: () => api.get('/matching/test-recommendations/'),
   getUserSubjects: () => api.get('/matching/user-subjects/'),
   addUserSubject: (data) => api.post('/matching/user-subjects/', data),
   deleteUserSubject: (subjectId) => api.delete(`/matching/user-subjects/${subjectId}/`),
+  getRecommendations: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.faculty) params.append('faculty', filters.faculty);
+    if (filters.year) params.append('year', filters.year);
+    if (filters.subject_id) params.append('subject_id', filters.subject_id);
+
+    return api.get(`/matching/recommendations/?${params.toString()}`);
+  },
+  getMatches: () => api.get('/matching/matches/'),
+  swipe: (userId, action) => api.post(`/matching/swipe/${userId}/`, { action }),
+  getMutualLikes: () => api.get('/matching/mutual-likes/'),
 };
 
 export const chatAPI = {
@@ -90,12 +100,27 @@ export const chatAPI = {
 };
 
 export const studySessionsAPI = {
-  getSessions: () => api.get('/study-sessions/sessions/'),
+  // Сессии
+  createSession: (sessionData) => api.post('/study-sessions/', sessionData),
+  getSessions: (params = {}) => api.get('/study-sessions/', { params }),
+  getSession: (id) => api.get(`/study-sessions/${id}/`),
   getMySessions: () => api.get('/study-sessions/my-sessions/'),
-  createSession: (sessionData) => api.post('/study-sessions/create/', sessionData),
   joinSession: (sessionId) => api.post(`/study-sessions/join/${sessionId}/`),
   leaveSession: (sessionId) => api.post(`/study-sessions/leave/${sessionId}/`),
   deleteSession: (sessionId) => api.delete(`/study-sessions/delete/${sessionId}/`),
+
+  // Приглашения
+  sendInvitation: (sessionId, userId) =>
+    api.post(`/study-sessions/${sessionId}/invitations/`, { user_id: userId }),
+
+  getInvitations: () =>
+    api.get('/study-session-invitations/'),
+
+  respondToInvitation: (invitationId, response) =>
+    api.post(`/study-session-invitations/${invitationId}/respond/`, { response }),
+
+  getSessionParticipants: (sessionId) =>
+    api.get(`/study-sessions/${sessionId}/participants/`),
 };
 
 export default api;
