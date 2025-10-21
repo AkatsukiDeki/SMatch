@@ -1,11 +1,14 @@
-// src/components/chat/MessageList.js
 import React, { useEffect, useRef } from 'react';
+import './MessageList.css';
 
 const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession }) => {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end"
+    });
   };
 
   useEffect(() => {
@@ -13,29 +16,41 @@ const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession 
   }, [messages]);
 
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(timestamp).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return '--:--';
+    }
   };
 
   const formatDate = (timestamp) => {
-    return new Date(timestamp).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    try {
+      return new Date(timestamp).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Неизвестная дата';
+    }
   };
 
   // Группируем сообщения по датам
   const groupMessagesByDate = (messages) => {
     const groups = {};
     messages.forEach(message => {
-      const date = new Date(message.timestamp).toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
+      try {
+        const date = new Date(message.timestamp).toDateString();
+        if (!groups[date]) {
+          groups[date] = [];
+        }
+        groups[date].push(message);
+      } catch (error) {
+        console.error('Error grouping message:', error);
       }
-      groups[date].push(message);
     });
     return groups;
   };
@@ -43,15 +58,30 @@ const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession 
   const shouldShowDateSeparator = (currentMessage, previousMessage) => {
     if (!previousMessage) return true;
 
-    const currentDate = new Date(currentMessage.timestamp).toDateString();
-    const previousDate = new Date(previousMessage.timestamp).toDateString();
-
-    return currentDate !== previousDate;
+    try {
+      const currentDate = new Date(currentMessage.timestamp).toDateString();
+      const previousDate = new Date(previousMessage.timestamp).toDateString();
+      return currentDate !== previousDate;
+    } catch (error) {
+      return true;
+    }
   };
+
+  // Получаем инициалы для аватара
+  const getInitials = (user) => {
+    if (!user) return 'U';
+    if (user.first_name && user.last_name) {
+      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
+    }
+    return user.username ? user.username.charAt(0).toUpperCase() : 'U';
+  };
+
+  const messageGroups = groupMessagesByDate(messages);
+  const allMessages = Object.values(messageGroups).flat();
 
   return (
     <div className="message-list">
-      {messages.length === 0 ? (
+      {allMessages.length === 0 ? (
         <div className="no-messages">
           <div className="no-messages-icon">💬</div>
           <p>Пока нет сообщений</p>
@@ -60,6 +90,7 @@ const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession 
             <button
               className="suggest-session-btn"
               onClick={() => onCreateSession(otherUserProfile)}
+              type="button"
             >
               📚 Предложить учебную сессию
             </button>
@@ -67,27 +98,30 @@ const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession 
         </div>
       ) : (
         <div className="messages-container">
-          {messages.map((message, index) => {
-            const previousMessage = index > 0 ? messages[index - 1] : null;
+          {allMessages.map((message, index) => {
+            const previousMessage = index > 0 ? allMessages[index - 1] : null;
             const showDateSeparator = shouldShowDateSeparator(message, previousMessage);
+            const isOwnMessage = message.sender === currentUser.id;
 
             return (
-              <div key={message.id} className="message-group">
+              <div key={message.id || `msg-${index}`} className="message-group">
                 {showDateSeparator && (
                   <div className="date-separator">
                     <span>{formatDate(message.timestamp)}</span>
                   </div>
                 )}
 
-                <div className={`message ${message.sender === currentUser.id ? 'own' : 'other'}`}>
-                  {message.sender !== currentUser.id && (
+                <div className={`message ${isOwnMessage ? 'own' : 'other'}`}>
+                  {/* Аватар отправителя (для чужих сообщений) */}
+                  {!isOwnMessage && (
                     <div className="message-sender-avatar">
-                      {otherUserProfile?.username?.charAt(0)?.toUpperCase() || 'U'}
+                      {getInitials(otherUserProfile)}
                     </div>
                   )}
 
                   <div className="message-content-wrapper">
-                    {message.sender !== currentUser.id && (
+                    {/* Имя отправителя (для чужих сообщений) */}
+                    {!isOwnMessage && (
                       <div className="message-sender-name">
                         {otherUserProfile?.first_name && otherUserProfile?.last_name
                           ? `${otherUserProfile.first_name} ${otherUserProfile.last_name}`
@@ -100,16 +134,17 @@ const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession 
                       <div className="message-text">{message.content}</div>
                       <div className="message-time">
                         {formatTime(message.timestamp)}
-                        {message.is_read && message.sender === currentUser.id && (
+                        {message.is_read && isOwnMessage && (
                           <span className="read-status" title="Прочитано">✓✓</span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {message.sender === currentUser.id && (
+                  {/* Аватар отправителя (для своих сообщений) */}
+                  {isOwnMessage && (
                     <div className="message-sender-avatar own">
-                      {currentUser.username?.charAt(0)?.toUpperCase() || 'U'}
+                      {getInitials(currentUser)}
                     </div>
                   )}
                 </div>
@@ -118,7 +153,7 @@ const MessageList = ({ messages, currentUser, otherUserProfile, onCreateSession 
           })}
         </div>
       )}
-      <div ref={messagesEndRef} />
+      <div ref={messagesEndRef} className="scroll-anchor" />
     </div>
   );
 };

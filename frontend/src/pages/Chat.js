@@ -1,143 +1,175 @@
-// src/pages/Chat.js - ИСПРАВЛЕННАЯ ВЕРСИЯ
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { chatAPI, studySessionsAPI } from '../services/api';
+import { chatAPI, matchingAPI, studySessionsAPI } from '../services/api';
 import WebSocketService from '../services/websocket';
-import ChatList from '../components/chat/ChatList';
-import MessageList from '../components/chat/MessageList';
+import { useNavigate } from 'react-router-dom';
+import { debounce } from 'lodash';
 import MessageInput from '../components/chat/MessageInput';
-import { useNavigate, useLocation } from 'react-router-dom';
 import './Chat.css';
 
+// Мемоизированный компонент элемента чата
+const ChatItem = React.memo(({ chat, isSelected, onClick }) => {
+  const getInitials = (profile) => {
+    if (!profile) return '?';
+    return profile.first_name?.charAt(0) ||
+           profile.username?.charAt(0) ||
+           '?';
+  };
+
+  const getDisplayName = (profile) => {
+    if (!profile) return 'Загрузка...';
+    return profile.first_name || profile.username || 'Неизвестный';
+  };
+
+  const getFaculty = (profile) => {
+    return profile?.faculty || 'Факультет не указан';
+  };
+
+  return (
+    <div className={`chat-item ${isSelected ? 'active' : ''}`} onClick={onClick}>
+      <div className="chat-avatar">
+        {getInitials(chat.other_user_profile)}
+      </div>
+      <div className="chat-info">
+        <div className="chat-header">
+          <strong>{getDisplayName(chat.other_user_profile)}</strong>
+          {chat.unread_count > 0 && (
+            <span className="unread-badge">{chat.unread_count}</span>
+          )}
+        </div>
+        <div className="last-message">
+          {chat.last_message?.content || 'Нет сообщений'}
+        </div>
+        <div className="chat-meta">
+          <span>{getFaculty(chat.other_user_profile)}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ChatItem.displayName = 'ChatItem';
+
 const Chat = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [chatRooms, setChatRooms] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [otherUserProfile, setOtherUserProfile] = useState(null);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const location = useLocation();
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    // Если перешли из взаимных лайков с выбранным чатом
-    if (location.state?.selectedChat) {
-      setSelectedChat(location.state.selectedChat);
-    }
+  // Функция для нормализации данных пользователя
+  const normalizeUserProfile = (profile) => {
+    if (!profile) return null;
 
-    // Загружаем чаты только если пользователь авторизован
-    if (!authLoading && user) {
-      loadChatRooms();
-    }
-
-    return () => {
-      WebSocketService.disconnect();
+    return {
+      id: profile.id,
+      username: profile.username || 'Неизвестный',
+      first_name: profile.first_name || profile.username || 'Неизвестный',
+      faculty: profile.faculty || 'Факультет не указан',
+      avatar: profile.avatar
     };
-  }, [location, authLoading, user]);
-
-  useEffect(() => {
-    // Настраиваем WebSocket только когда выбран чат И пользователь загружен
-    if (selectedChat && user && !authLoading) {
-      loadMessages(selectedChat.id);
-      setupWebSocket(selectedChat.id);
-      setOtherUserProfile(selectedChat.other_user_profile);
-    } else {
-      WebSocketService.disconnect();
-      setOtherUserProfile(null);
-    }
-  }, [selectedChat, user, authLoading]);
-
-  const setupWebSocket = (chatRoomId) => {
-    WebSocketService.disconnect();
-
-    if (user && user.username) {
-      WebSocketService.connect(chatRoomId, user.username);
-      WebSocketService.onMessage(handleNewMessage);
-    }
   };
 
-  const handleNewMessage = (messageData) => {
-    if (!selectedChat || !user) return;
-
-    // Проверяем, что сообщение для текущего чата
-    const newMessage = {
-      id: Date.now(), // Временный ID до сохранения на сервере
-      sender: messageData.username === user.username ? user.id : selectedChat.other_user,
-      content: messageData.message,
-      timestamp: new Date().toISOString(),
-      is_read: messageData.username === user.username
+  // Нормализация данных чата
+  const normalizeChatData = (chat) => {
+    return {
+      ...chat,
+      other_user_profile: normalizeUserProfile(chat.other_user_profile)
     };
-
-    setMessages(prev => [...prev, newMessage]);
-
-    // Обновляем список чатов (последнее сообщение)
-    setChatRooms(prev => prev.map(chat =>
-      chat.id === selectedChat.id
-        ? {
-            ...chat,
-            last_message: {
-              content: messageData.message,
-              timestamp: new Date().toISOString()
-            }
-          }
-        : chat
-    ));
   };
 
-  const loadChatRooms = async () => {
+  // Загрузка списка чатов
+  const loadChatRooms = useCallback(async () => {
     try {
       setLoading(true);
-      setError('');
       const response = await chatAPI.getChatRooms();
-      setChatRooms(response.data);
+
+      // Нормализуем данные чатов
+      const normalizedChats = response.data.map(normalizeChatData);
+      setChatRooms(normalizedChats);
+      setError('');
     } catch (error) {
       console.error('Ошибка загрузки чатов:', error);
       setError('Не удалось загрузить чаты');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadMessages = async (chatRoomId) => {
+  // Оптимизированная загрузка чатов с debounce
+  const debouncedLoadChats = useCallback(
+    debounce(loadChatRooms, 300),
+    [loadChatRooms]
+  );
+
+  // Загрузка сообщений
+  const loadMessages = useCallback(async (chatRoomId) => {
     try {
-      setError('');
       const response = await chatAPI.getMessages(chatRoomId);
       setMessages(response.data);
+      setError('');
     } catch (error) {
       console.error('Ошибка загрузки сообщений:', error);
       setError('Не удалось загрузить сообщения');
     }
-  };
+  }, []);
 
-  const sendMessage = async (content) => {
-    if (!selectedChat || !content.trim() || !user) return;
+  // Отправка сообщения с оптимистичным обновлением
+  const sendMessage = async (messageContent) => {
+    if (!selectedChat || !messageContent.trim() || sending) return;
 
-    const sent = WebSocketService.sendMessage(content);
+    const content = messageContent.trim();
 
-    if (!sent) {
-      try {
-        // Fallback: отправка через HTTP если WebSocket не доступен
-        await chatAPI.sendMessage(selectedChat.id, { content });
-        // Перезагружаем сообщения
-        loadMessages(selectedChat.id);
-      } catch (error) {
-        console.error('Ошибка отправки сообщения:', error);
-        setError('Не удалось отправить сообщение');
-      }
+    // Создаем временное сообщение для оптимистичного обновления
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      content: content,
+      sender: user.id,
+      timestamp: new Date().toISOString(),
+      isSending: true
+    };
+
+    try {
+      setSending(true);
+      setNewMessage('');
+      adjustTextareaHeight();
+
+      // Оптимистичное обновление UI
+      setMessages(prev => [...prev, tempMessage]);
+
+      // Отправка на сервер
+      await chatAPI.sendMessage(selectedChat.id, { content: content });
+
+      // Обновляем сообщения с сервера
+      await loadMessages(selectedChat.id);
+      debouncedLoadChats();
+
+    } catch (error) {
+      console.error('Ошибка отправки сообщения:', error);
+      setError('Не удалось отправить сообщение');
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+    } finally {
+      setSending(false);
     }
   };
 
-  const handleCreateSession = async (userProfile) => {
-    if (!userProfile || !user) return;
-
+  // Функция для создания учебной сессии
+  const handleCreateSession = async (partnerUser) => {
     try {
+      console.log('Создание сессии с пользователем:', partnerUser);
+
+      // Создаем базовую сессию
       const sessionData = {
-        title: `Сессия с ${userProfile.first_name || userProfile.username}`,
-        description: `Совместная учебная сессия с ${userProfile.first_name || userProfile.username}`,
-        subject_name: 'Общая подготовка',
-        scheduled_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        title: `Совместная сессия с ${partnerUser.first_name || partnerUser.username}`,
+        description: `Учебная сессия с ${partnerUser.first_name || partnerUser.username}. Давайте вместе позанимаемся!`,
+        subject_name: 'Совместное обучение',
+        scheduled_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Завтра
         duration_minutes: 60,
         max_participants: 2
       };
@@ -145,61 +177,116 @@ const Chat = () => {
       const response = await studySessionsAPI.createSession(sessionData);
       const newSession = response.data;
 
-      const sessionMessage = `📚 Предлагаю создать учебную сессию! "${newSession.title}" на ${new Date(newSession.scheduled_time).toLocaleDateString()}`;
-      await sendMessage(sessionMessage);
+      console.log('✅ Сессия создана:', newSession);
 
-      alert(`Сессия "${newSession.title}" создана! Сообщение отправлено собеседнику.`);
+      // Отправляем приглашение
+      await studySessionsAPI.sendInvitation(newSession.id, partnerUser.id);
+
+      // Отправляем сообщение в чат о создании сессии
+      const invitationMessage = `📚 Я создал(а) учебную сессию "${newSession.title}"! Присоединяйтесь!`;
+      await sendMessage(invitationMessage);
+
+      alert('✅ Учебная сессия создана и приглашение отправлено!');
 
     } catch (error) {
-      console.error('Ошибка создания сессии:', error);
-      alert('Ошибка при создании сессии');
+      console.error('❌ Ошибка создания сессии:', error);
+      alert('Ошибка при создании сессии: ' + (error.response?.data?.error || error.message));
     }
   };
 
-  const handleQuickSession = () => {
-    if (!otherUserProfile || !user) return;
-
-    const quickSessionMessage = `🎯 Предлагаю быстро собраться на учебную сессию! Есть время позаниматься?`;
-    sendMessage(quickSessionMessage);
+  // Функция для прокрутки к последнему сообщению
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Показываем загрузку пока проверяется аутентификация
-  if (authLoading) {
-    return (
-      <div className="chat-container">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Проверка авторизации...</p>
-        </div>
-      </div>
-    );
-  }
+  // Автоматическое изменение высоты textarea
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  };
 
-  // Показываем сообщение если пользователь не авторизован
+  // Обработка нажатия клавиш
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(newMessage);
+    }
+  };
+
+  // Обработчик изменения текста сообщения
+  const handleMessageChange = (e) => {
+    setNewMessage(e.target.value);
+  };
+
+  // Обработчик выбора чата
+  const handleChatSelect = (chat) => {
+    const normalizedChat = normalizeChatData(chat);
+    setSelectedChat(normalizedChat);
+    loadMessages(normalizedChat.id);
+  };
+
+  // Получение информации о партнере по чату
+  const getPartnerInfo = (chat) => {
+    if (!chat?.other_user_profile) {
+      return {
+        initials: '?',
+        name: 'Загрузка...',
+        faculty: 'Факультет не указан'
+      };
+    }
+
+    const profile = chat.other_user_profile;
+    return {
+      initials: profile.first_name?.charAt(0) || profile.username?.charAt(0) || '?',
+      name: profile.first_name || profile.username || 'Неизвестный',
+      faculty: profile.faculty || 'Факультет не указан'
+    };
+  };
+
+  const partnerInfo = selectedChat ? getPartnerInfo(selectedChat) : null;
+
+  // Инициализация при загрузке компонента
+  useEffect(() => {
+    if (user) {
+      loadChatRooms();
+    }
+  }, [user, loadChatRooms]);
+
+  // Загрузка сообщений при выборе чата
+  useEffect(() => {
+    if (selectedChat && user) {
+      loadMessages(selectedChat.id);
+    }
+  }, [selectedChat, user, loadMessages]);
+
+  // Прокрутка к последнему сообщению при изменении сообщений
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Автоматическая регулировка высоты textarea
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [newMessage]);
+
+  // Очистка при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      WebSocketService.disconnect();
+      debouncedLoadChats.cancel();
+    };
+  }, [debouncedLoadChats]);
+
   if (!user) {
     return (
-      <div className="chat-container">
+      <div className="chat-page">
         <div className="auth-required">
           <h2>Пожалуйста, войдите в систему</h2>
-          <p>Для доступа к чату необходимо авторизоваться</p>
-          <button
-            onClick={() => navigate('/login')}
-            className="login-btn"
-          >
+          <button onClick={() => navigate('/login')} className="login-btn">
             Войти
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Показываем загрузку чатов
-  if (loading) {
-    return (
-      <div className="chat-container">
-        <div className="loading">
-          <div className="spinner"></div>
-          <p>Загрузка чатов...</p>
         </div>
       </div>
     );
@@ -208,67 +295,117 @@ const Chat = () => {
   return (
     <div className="chat-page">
       <div className="chat-container">
-        <ChatList
-          chatRooms={chatRooms}
-          selectedChat={selectedChat}
-          onSelectChat={setSelectedChat}
-        />
+        {/* Боковая панель с чатами */}
+        <div className="chat-sidebar">
+          <div className="sidebar-header">
+            <h2>Чаты</h2>
+            <button
+              className="new-chat-btn"
+              onClick={() => navigate('/matching')}
+              title="Найти собеседников"
+              aria-label="Найти собеседников"
+            >
+              🔍
+            </button>
+          </div>
 
+          <div className="chat-list">
+            {loading ? (
+              <div className="loading">Загрузка чатов...</div>
+            ) : error ? (
+              <div className="no-chats">
+                <div className="no-chats-icon">⚠️</div>
+                <p>{error}</p>
+                <button onClick={loadChatRooms} className="find-partners-btn">
+                  Повторить
+                </button>
+              </div>
+            ) : chatRooms.length === 0 ? (
+              <div className="no-chats">
+                <div className="no-chats-icon">💬</div>
+                <p>Нет чатов</p>
+                <small>Найдите партнеров в разделе "Поиск"</small>
+              </div>
+            ) : (
+              chatRooms.map(chat => (
+                <ChatItem
+                  key={chat.id}
+                  chat={chat}
+                  isSelected={selectedChat?.id === chat.id}
+                  onClick={() => handleChatSelect(chat)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Область сообщений */}
         <div className="chat-main">
           {selectedChat ? (
             <>
               <div className="chat-header">
-                <div className="chat-header-info">
-                  <h3>
-                    {otherUserProfile?.first_name && otherUserProfile?.last_name
-                      ? `${otherUserProfile.first_name} ${otherUserProfile.last_name}`
-                      : otherUserProfile?.username || 'Пользователь'
-                    }
-                  </h3>
-                  <span className="chat-status">
-                    {otherUserProfile?.faculty || 'Студент'}
-                    <span className="online-status">● онлайн</span>
-                  </span>
-                </div>
-                <div className="chat-header-actions">
-                  <button
-                    className="quick-session-btn"
-                    onClick={handleQuickSession}
-                    title="Предложить быструю сессию"
-                  >
-                    🎯 Быстрая сессия
-                  </button>
+                <div className="chat-partner">
+                  <div className="partner-avatar">
+                    {partnerInfo.initials}
+                  </div>
+                  <div className="partner-info">
+                    <h3>{partnerInfo.name}</h3>
+                    <span>{partnerInfo.faculty}</span>
+                  </div>
                 </div>
               </div>
 
-              {error && (
-                <div className="error-message" style={{margin: '10px'}}>
-                  {error}
-                </div>
-              )}
-
-              <MessageList
-                messages={messages}
-                currentUser={user}
-                otherUserProfile={otherUserProfile}
-                onCreateSession={handleCreateSession}
-              />
+              <div className="messages-container">
+                {messages.length === 0 ? (
+                  <div className="no-messages">
+                    <div className="no-messages-icon">💭</div>
+                    <p>Пока нет сообщений</p>
+                    <small>Начните общение первым!</small>
+                  </div>
+                ) : (
+                  <>
+                    {messages.map(message => (
+                      <div
+                        key={message.id}
+                        className={`message ${message.sender === user.id ? 'own' : 'other'} ${message.isSending ? 'sending' : ''}`}
+                      >
+                        <div className="message-content">
+                          <div className="message-text">{message.content}</div>
+                          <div className="message-time">
+                            {new Date(message.timestamp).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                            {message.isSending && (
+                              <span className="sending-indicator"> • Отправка...</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
 
               <MessageInput
                 onSendMessage={sendMessage}
                 onCreateSession={handleCreateSession}
-                otherUser={otherUserProfile}
+                otherUser={selectedChat.other_user_profile}
               />
             </>
           ) : (
-            <div className="chat-placeholder">
-              <div className="placeholder-icon">💬</div>
-              <h3>Выберите чат для начала общения</h3>
-              <p>Начните общение с пользователями из раздела "Взаимные лайки"</p>
-              <div className="placeholder-features">
-                <div className="feature">💕 Взаимные лайки</div>
-                <div className="feature">📚 Совместные сессии</div>
-                <div className="feature">🎯 Быстрое планирование</div>
+            <div className="chat-welcome">
+              <div className="welcome-content">
+                <div className="welcome-icon">💬</div>
+                <h2>Добро пожаловать в чат</h2>
+                <p>Выберите чат для начала общения</p>
+                <button
+                  onClick={() => navigate('/matching')}
+                  className="find-partners-btn"
+                >
+                  🔍 Найти партнеров
+                </button>
               </div>
             </div>
           )}

@@ -1,4 +1,3 @@
-# matching/views.py
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -7,22 +6,20 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from .models import Subject, UserSubject, Swipe, Match
 from .serializers import SubjectSerializer, UserSubjectSerializer, SwipeSerializer, MatchSerializer, SimpleProfileSerializer
-
+from chat.models import ChatRoom
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
     return Response({"status": "Matching API is working"})
 
-
 @api_view(['GET'])
-@permission_classes([AllowAny])  # ИСПРАВЛЕНО: AllowAny вместо IsAuthenticated
+@permission_classes([AllowAny])
 def get_subjects(request):
     """Получить список всех предметов"""
     subjects = Subject.objects.all()
     serializer = SubjectSerializer(subjects, many=True)
     return Response(serializer.data)
-
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -44,7 +41,6 @@ def user_subjects(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_user_subject(request, subject_id):
@@ -56,9 +52,8 @@ def delete_user_subject(request, subject_id):
     except UserSubject.DoesNotExist:
         return Response({'error': 'Предмет не найден'}, status=status.HTTP_404_NOT_FOUND)
 
-
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])  # ИСПРАВЛЕНО: IsAuthenticated вместо AllowAny
+@permission_classes([IsAuthenticated])
 def get_recommendations(request):
     """Получить рекомендации пользователей для мэтчинга с фильтрами"""
     # Получаем параметры фильтрации из query parameters
@@ -130,7 +125,6 @@ def get_recommendations(request):
     except Exception as e:
         print(f"Error in get_recommendations: {e}")
         return Response({'error': 'Internal server error'}, status=500)
-
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -209,7 +203,7 @@ def swipe(request, user_id):
         action=action
     )
 
-    # Если это взаимный лайк - создаем мэтч
+    # Если это взаимный лайк - создаем мэтч и чат
     if action == 'like':
         mutual_swipe = Swipe.objects.filter(
             swiper=swiped_user,
@@ -219,21 +213,29 @@ def swipe(request, user_id):
 
         if mutual_swipe:
             # Создаем мэтч
-            match = Match.objects.create(
-                user1=request.user,
-                user2=swiped_user
+            match, match_created = Match.objects.get_or_create(
+                user1=min(request.user, swiped_user, key=lambda u: u.id),
+                user2=max(request.user, swiped_user, key=lambda u: u.id),
+                defaults={'is_active': True}
             )
+
+            # Автоматически создаем чат-комнату
+            chat_room, chat_created = ChatRoom.get_or_create_chat(request.user, swiped_user)
+
             return Response({
                 'swipe': SwipeSerializer(swipe).data,
-                'match_created': True,
-                'match': MatchSerializer(match, context={'request': request}).data
+                'match_created': match_created,
+                'match': MatchSerializer(match, context={'request': request}).data,
+                'chat_room_created': chat_created,
+                'chat_room_id': chat_room.id,
+                'message': '🎉 Это взаимная симпатия! Чат создан автоматически.'
             }, status=status.HTTP_201_CREATED)
 
     return Response({
         'swipe': SwipeSerializer(swipe).data,
-        'match_created': False
+        'match_created': False,
+        'message': 'Лайк отправлен! Ждем ответа.'
     }, status=status.HTTP_201_CREATED)
-
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

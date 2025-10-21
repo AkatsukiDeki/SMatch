@@ -1,8 +1,5 @@
-# users/models.py
 from django.db import models
 from django.contrib.auth.models import User
-from django.utils import timezone
-
 
 class University(models.Model):
     name = models.CharField(max_length=200)
@@ -12,7 +9,6 @@ class University(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class UserProfile(models.Model):
     YEAR_CHOICES = [
@@ -28,16 +24,11 @@ class UserProfile(models.Model):
     faculty = models.CharField(max_length=100, blank=True)
     year_of_study = models.IntegerField(choices=YEAR_CHOICES, null=True, blank=True)
     bio = models.TextField(max_length=500, blank=True)
-    telegram = models.CharField(max_length=50, blank=True)
-    whatsapp = models.CharField(max_length=50, blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    show_contact_info = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     @property
     def study_level(self):
-        """Вычисляемый уровень обучения на основе курса"""
         if not self.year_of_study:
             return "Не указано"
         elif self.year_of_study == 1:
@@ -50,3 +41,14 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Profile"
+
+def user_avatar_path(instance, filename):
+    return f'avatars/user_{instance.user.id}/{filename}'
+
+class UserAvatar(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='avatar')
+    image = models.ImageField(upload_to=user_avatar_path, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Avatar for {self.user.username}"

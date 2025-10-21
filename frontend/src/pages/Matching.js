@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { matchingAPI } from '../services/api';
 import UserCard from '../components/matching/UserCard';
 import Filters from '../components/matching/Filters';
-import './Matching.css';
 import MutualLikes from '../components/matching/MutualLikes';
 import { useNavigate } from 'react-router-dom';
+import './Matching.css';
 
 const Matching = () => {
   const navigate = useNavigate();
@@ -33,10 +33,12 @@ const Matching = () => {
 
   const loadSubjects = async () => {
     try {
+      console.log('📚 Загрузка предметов...');
       const response = await matchingAPI.getSubjects();
+      console.log('✅ Предметы загружены:', response.data);
       setSubjects(response.data);
     } catch (error) {
-      console.error('Error loading subjects:', error);
+      console.error('❌ Ошибка загрузки предметов:', error);
     }
   };
 
@@ -44,17 +46,24 @@ const Matching = () => {
     try {
       setLoading(true);
       setError('');
+      console.log('🔍 Загрузка рекомендаций с фильтрами:', filters);
+
       const response = await matchingAPI.getRecommendations(filters);
+      console.log('✅ Рекомендации загружены:', response.data);
       setRecommendations(response.data);
+
     } catch (error) {
-      console.error('Error loading recommendations:', error);
-      setError('Ошибка загрузки рекомендаций');
-      // Показываем тестовые данные при ошибке
+      console.error('❌ Ошибка загрузки рекомендаций:', error);
+
+      // Fallback на тестовые данные
       try {
+        console.log('🔄 Пробуем загрузить тестовые рекомендации...');
         const testResponse = await matchingAPI.getTestRecommendations();
         setRecommendations(testResponse.data);
+        setError('Используются тестовые данные');
       } catch (testError) {
         setError('Не удалось загрузить рекомендации');
+        setRecommendations([]);
       }
     } finally {
       setLoading(false);
@@ -82,18 +91,20 @@ const Matching = () => {
 
   const handleSwipe = async (userId, action) => {
     try {
+      console.log(`🔄 Свайп: ${action} пользователя ${userId}`);
       await matchingAPI.swipe(userId, action);
 
-      // Удаляем пользователя из списка рекомендаций
+      // Убираем пользователя из списка
       setRecommendations(prev => prev.filter(user => user.id !== userId));
 
+      console.log(`✅ ${action === 'like' ? 'Лайк' : 'Пас'} отправлен`);
+
     } catch (error) {
-      console.error('Error swiping:', error);
+      console.error('❌ Ошибка при отправке свайпа:', error);
       setError('Ошибка при отправке действия');
     }
   };
 
-  // Проверка аутентификации
   if (!user) {
     return (
       <div className="matching-page">
@@ -110,8 +121,8 @@ const Matching = () => {
   return (
     <div className="matching-page">
       <div className="matching-header">
-        <h1>Найди партнера для обучения</h1>
-        <p>Свайпай вправо чтобы лайкнуть, влево чтобы пропустить</p>
+        <h1>🎯 Найди идеального партнера для обучения</h1>
+        <p>Свайпай вправо 👍 чтобы лайкнуть, влево 👎 чтобы пропустить</p>
       </div>
 
       <Filters
@@ -132,19 +143,22 @@ const Matching = () => {
       {loading ? (
         <div className="loading">
           <div className="spinner"></div>
-          <p>Поиск подходящих партнеров...</p>
+          <p>Ищем подходящих партнеров...</p>
         </div>
       ) : (
         <div className="matching-container">
           {recommendations.length === 0 ? (
             <div className="no-users">
+              <div className="no-users-icon">🔍</div>
               <h2>Пока нет рекомендаций</h2>
-              <p>Попробуйте изменить фильтры или добавить больше предметов в ваш профиль</p>
-              <button onClick={loadRecommendations}>Обновить</button>
+              <p>Попробуйте изменить фильтры или добавить больше предметов в профиль</p>
+              <div className="no-users-actions">
+                <button onClick={loadRecommendations}>Обновить</button>
+                <button onClick={() => navigate('/profile')}>Добавить предметы</button>
+              </div>
             </div>
           ) : (
             <div className="cards-stack">
-              {/* Показываем только первые 3 карточки в стеке */}
               {recommendations.slice(0, 3).map((user, index) => (
                 <UserCard
                   key={user.id}
@@ -153,7 +167,7 @@ const Matching = () => {
                   currentIndex={index}
                   totalCards={recommendations.length}
                   style={{
-                    zIndex: 3 - index, // Первая карточка поверх остальных
+                    zIndex: recommendations.length - index,
                     transform: `scale(${1 - index * 0.08}) translateY(${index * 15}px)`,
                     opacity: 1 - index * 0.2
                   }}
@@ -164,7 +178,6 @@ const Matching = () => {
         </div>
       )}
 
-      {/* Добавляем блок взаимных лайков */}
       <MutualLikes onStartChat={handleStartChat} />
     </div>
   );

@@ -1,7 +1,6 @@
-/* src/components/common/Header.css */
 .header {
-  background: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -10,21 +9,26 @@
 .header-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 70px;
 }
 
-.logo-link {
+.logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 12px;
   text-decoration: none;
-  color: #2c3e50;
+  color: white;
   font-weight: bold;
   font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.05);
 }
 
 .logo-icon {
@@ -32,140 +36,116 @@
 }
 
 .logo-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(45deg, #fff, #e2e8f0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Desktop Navigation */
-.nav-desktop {
+.nav {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 8px;
 }
 
 .nav-link {
-  color: #2c3e50;
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 8px;
+  padding: 12px 20px;
+  color: white;
+  text-decoration: none;
+  border-radius: 25px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  position: relative;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .nav-link:hover {
-  background-color: #f8f9fa;
-  color: #3498db;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
 .nav-link.active {
-  background-color: #3498db;
-  color: white;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
 }
 
-.nav-link.register {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.nav-icon {
+  font-size: 1.1rem;
 }
 
-.nav-link.register:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #e53e3e;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
 }
 
 .logout-btn {
-  background: #e74c3c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(239, 68, 68, 0.8);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 25px;
   cursor: pointer;
-  font-weight: 500;
   transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .logout-btn:hover {
-  background: #c0392b;
-  transform: translateY(-1px);
+  background: rgba(239, 68, 68, 1);
+  transform: translateY(-2px);
 }
 
-/* Mobile Styles */
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #2c3e50;
-  padding: 0.5rem;
+.register-btn {
+  background: rgba(72, 187, 120, 0.8);
 }
 
-.nav-mobile {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  flex-direction: column;
-  padding: 1rem;
+.register-btn:hover {
+  background: rgba(72, 187, 120, 1);
 }
 
-.nav-mobile .nav-link {
-  padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  border-radius: 0;
-}
-
-.nav-mobile .nav-link:last-child {
-  border-bottom: none;
-}
-
-.nav-mobile .logout-btn.mobile {
-  margin-top: 1rem;
-  padding: 1rem;
-  text-align: left;
-  border-radius: 6px;
-}
-
-/* Responsive */
+/* Адаптивность */
 @media (max-width: 768px) {
   .header-container {
-    padding: 0 1rem;
-  }
-
-  .nav-desktop {
-    display: none;
-  }
-
-  .mobile-menu-btn {
-    display: block;
-  }
-
-  .nav-mobile {
-    display: flex;
-  }
-
-  .logo-text {
-    font-size: 1.3rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .header-container {
+    padding: 0 15px;
     height: 60px;
   }
 
-  .logo-icon {
-    font-size: 1.5rem;
+  .logo-text {
+    display: none;
   }
 
-  .logo-text {
+  .nav {
+    gap: 5px;
+  }
+
+  .nav-link {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+  }
+
+  .nav-link span:not(.nav-icon) {
+    display: none;
+  }
+
+  .nav-icon {
     font-size: 1.2rem;
   }
 }

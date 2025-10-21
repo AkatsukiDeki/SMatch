@@ -3,17 +3,23 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
+  background: #f8f9fa;
 }
 
 .main-content {
   flex: 1;
   padding: 0;
   background-color: #f8f9fa;
+  margin: 0;
+  width: 100%;
 }
 
 /* Убираем отступы для полноэкранных страниц (чат, мэтчинг) */
 .main-content.full-screen {
   padding: 0;
+  margin: 0;
 }
 
 .footer {
@@ -21,6 +27,7 @@
   color: white;
   padding: 1.5rem 0;
   margin-top: auto;
+  width: 100%;
 }
 
 .footer-content {
@@ -52,5 +59,9 @@
     flex-direction: column;
     gap: 1rem;
     text-align: center;
+  }
+
+  .main-content {
+    padding: 0;
   }
 }

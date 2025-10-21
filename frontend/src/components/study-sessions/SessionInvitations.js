@@ -1,4 +1,3 @@
-// src/components/study-sessions/SessionInvitations.js
 import React, { useState, useEffect } from 'react';
 import { studySessionsAPI } from '../../services/api';
 import './SessionInvitations.css';
@@ -11,11 +10,14 @@ const SessionInvitations = () => {
   const loadInvitations = async () => {
     try {
       setLoading(true);
+      setError('');
+      console.log('🔄 Загрузка приглашений...');
       const response = await studySessionsAPI.getInvitations();
+      console.log('📨 Получены приглашения:', response.data);
       setInvitations(response.data);
     } catch (error) {
-      setError('Ошибка загрузки приглашений');
-      console.error('Error loading invitations:', error);
+      console.error('❌ Ошибка загрузки приглашений:', error);
+      setError('Не удалось загрузить приглашения');
     } finally {
       setLoading(false);
     }
@@ -23,6 +25,7 @@ const SessionInvitations = () => {
 
   const handleResponse = async (invitationId, response) => {
     try {
+      console.log(`📤 Отправка ответа на приглашение: ${response}`);
       await studySessionsAPI.respondToInvitation(invitationId, response);
 
       // Обновляем локальное состояние
@@ -34,9 +37,10 @@ const SessionInvitations = () => {
         )
       );
 
-      alert(response === 'accepted' ? 'Вы приняли приглашение!' : 'Вы отклонили приглашение');
+      alert(response === 'accepted' ? '🎉 Вы приняли приглашение!' : '❌ Вы отклонили приглашение');
+
     } catch (error) {
-      console.error('Error responding to invitation:', error);
+      console.error('❌ Ошибка при обработке приглашения:', error);
       alert('Ошибка при обработке приглашения');
     }
   };
@@ -46,13 +50,18 @@ const SessionInvitations = () => {
   }, []);
 
   const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Дата не указана';
+    }
   };
 
   if (loading) {
@@ -64,23 +73,59 @@ const SessionInvitations = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="invitations-error">
+        <p>{error}</p>
+        <button onClick={loadInvitations}>🔄 Попробовать снова</button>
+      </div>
+    );
+  }
+
   return (
     <div className="session-invitations">
-      <h3>📨 Приглашения на учебные сессии</h3>
+      <div className="invitations-header">
+        <h3>📨 Приглашения на учебные сессии</h3>
+        <button onClick={loadInvitations} className="refresh-btn" title="Обновить">
+          🔄
+        </button>
+      </div>
 
-      {error && (
-        <div className="invitations-error">
-          <p>{error}</p>
-          <button onClick={loadInvitations}>Попробовать снова</button>
-        </div>
-      )}
+      <p className="invitations-subtitle">
+        Здесь отображаются приглашения, которые вы получили от других пользователей
+      </p>
 
       {invitations.length === 0 ? (
         <div className="no-invitations">
-          <p>Пока нет приглашений на учебные сессии</p>
-          <small>Когда вам поступят приглашения, они появятся здесь</small>
+          <div className="no-invitations-icon">📭</div>
+          <h4>Пока нет приглашений</h4>
+          <p>Когда другие пользователи пришлют вам приглашения на учебные сессии, они появятся здесь.</p>
+          <div className="demo-tips">
+            <h5>Как получить приглашения?</h5>
+            <ul>
+              <li>✅ Создайте профиль и добавьте предметы</li>
+              <li>✅ Лайкайте других пользователей в разделе "Поиск"</li>
+              <li>✅ Дождитесь взаимных лайков</li>
+              <li>✅ Другие пользователи смогут пригласить вас на сессии</li>
+            </ul>
+          </div>
         </div>
       ) : (
+        <div className="invitations-stats">
+          <div className="stats-card">
+            <span className="stats-number">{invitations.length}</span>
+            <span className="stats-label">всего приглашений</span>
+          </div>
+          <div className="stats-card">
+            <span className="stats-number">
+              {invitations.filter(inv => inv.status === 'pending').length}
+            </span>
+            <span className="stats-label">ожидают ответа</span>
+          </div>
+        </div>
+      )}
+
+      {invitations.length > 0 && (
         <div className="invitations-list">
           {invitations.map((invitation) => (
             <div key={invitation.id} className={`invitation-card ${invitation.status}`}>
@@ -90,9 +135,19 @@ const SessionInvitations = () => {
                     {invitation.inviter?.username?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="inviter-details">
-                    <h4>{invitation.inviter?.username} приглашает вас</h4>
+                    <h4>
+                      {invitation.inviter?.first_name && invitation.inviter?.last_name
+                        ? `${invitation.inviter.first_name} ${invitation.inviter.last_name}`
+                        : invitation.inviter?.username || 'Пользователь'
+                      }
+                      <span className="inviter-username">@{invitation.inviter?.username}</span>
+                    </h4>
+                    <p className="inviter-faculty">
+                      {invitation.inviter?.profile?.faculty || 'Студент'}
+                      {invitation.inviter?.profile?.year_of_study && ` • ${invitation.inviter.profile.year_of_study} курс`}
+                    </p>
                     <span className="invitation-date">
-                      {formatDateTime(invitation.created_at)}
+                      📅 Приглашение отправлено: {formatDateTime(invitation.created_at)}
                     </span>
                   </div>
                 </div>
@@ -104,14 +159,15 @@ const SessionInvitations = () => {
               </div>
 
               <div className="session-details">
-                <h5>{invitation.session?.title}</h5>
+                <h5>🎯 {invitation.session?.title}</h5>
                 <p className="session-description">
-                  {invitation.session?.description}
+                  {invitation.session?.description || 'Описание отсутствует'}
                 </p>
                 <div className="session-meta">
                   <span>📅 {formatDateTime(invitation.session?.scheduled_time)}</span>
                   <span>⏱️ {invitation.session?.duration_minutes} минут</span>
                   <span>📚 {invitation.session?.subject_name}</span>
+                  <span>👥 Организатор: {invitation.session?.created_by}</span>
                 </div>
               </div>
 
@@ -121,7 +177,7 @@ const SessionInvitations = () => {
                     className="btn-accept"
                     onClick={() => handleResponse(invitation.id, 'accepted')}
                   >
-                    ✅ Принять
+                    ✅ Принять приглашение
                   </button>
                   <button
                     className="btn-decline"
@@ -135,8 +191,14 @@ const SessionInvitations = () => {
               {invitation.status !== 'pending' && (
                 <div className="invitation-response">
                   <p>
-                    Вы {invitation.status === 'accepted' ? 'приняли' : 'отклонили'} это приглашение
-                    {invitation.responded_at && ` ${formatDateTime(invitation.responded_at)}`}
+                    <strong>
+                      {invitation.status === 'accepted' ? '✅ Вы приняли это приглашение' : '❌ Вы отклонили это приглашение'}
+                    </strong>
+                    {invitation.responded_at && (
+                      <span className="response-date">
+                        📅 {formatDateTime(invitation.responded_at)}
+                      </span>
+                    )}
                   </p>
                 </div>
               )}

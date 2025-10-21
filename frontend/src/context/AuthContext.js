@@ -1,4 +1,3 @@
-// src/context/AuthContext.js - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
@@ -23,15 +22,12 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem('access_token');
-    console.log('🔐 Проверка аутентификации, токен:', token ? 'есть' : 'нет');
-
     if (token) {
       try {
         const response = await authAPI.getProfile();
-        console.log('✅ Пользователь авторизован:', response.data);
         setUser(response.data);
       } catch (error) {
-        console.error('❌ Ошибка проверки аутентификации:', error);
+        console.error('Auth check failed:', error);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
       }
@@ -39,26 +35,10 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
-  const refreshUser = async () => {
-    try {
-      console.log('🔄 Обновление данных пользователя...');
-      const response = await authAPI.getProfile();
-      setUser(response.data);
-      console.log('✅ Данные пользователя обновлены:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Ошибка обновления пользователя:', error);
-      throw error;
-    }
-  };
-
   const login = async (credentials) => {
     try {
       setError('');
-      console.log('🔐 Попытка входа...');
       const response = await authAPI.login(credentials);
-      console.log('✅ Успешный вход:', response.data);
-
       const { access, refresh, user } = response.data;
 
       localStorage.setItem('access_token', access);
@@ -67,10 +47,7 @@ export const AuthProvider = ({ children }) => {
 
       return response;
     } catch (error) {
-      console.error('❌ Ошибка входа:', error);
-      const message = error.response?.data?.error ||
-                     error.response?.data?.detail ||
-                     'Ошибка входа';
+      const message = error.response?.data?.error || 'Ошибка входа';
       setError(message);
       throw error;
     }
@@ -88,16 +65,13 @@ export const AuthProvider = ({ children }) => {
 
       return response;
     } catch (error) {
-      const message = error.response?.data?.error ||
-                     error.response?.data?.detail ||
-                     'Ошибка регистрации';
+      const message = error.response?.data?.error || 'Ошибка регистрации';
       setError(message);
       throw error;
     }
   };
 
   const logout = () => {
-    console.log('🚪 Выход из системы');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setUser(null);
@@ -105,13 +79,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (userData) => {
-    console.log('✏️ Обновление состояния пользователя:', userData);
     setUser(prevUser => ({ ...prevUser, ...userData }));
   };
 
-  const clearError = () => {
-    setError('');
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.getProfile();
+      const updatedUser = response.data;
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      throw error;
+    }
   };
+
+  const clearError = () => setError('');
 
   const value = {
     user,

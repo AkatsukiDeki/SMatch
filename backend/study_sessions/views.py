@@ -1,24 +1,22 @@
-# study_sessions/views.py
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db.models import Q
 from django.utils import timezone
-from .models import StudySession, SessionParticipant
+from django.contrib.auth.models import User
+from .models import StudySession, SessionParticipant, SessionInvitation
 from .serializers import StudySessionSerializer, CreateStudySessionSerializer, SessionParticipantSerializer
-
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
     return Response({"status": "Study Sessions API is working"})
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_sessions(request):
-    """Получить список учебных сессий"""
+    """Получить список всех активных учебных сессий"""
     sessions = StudySession.objects.filter(
         is_active=True,
         scheduled_time__gte=timezone.now()
@@ -26,58 +24,67 @@ def get_sessions(request):
     serializer = StudySessionSerializer(sessions, many=True)
     return Response(serializer.data)
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_my_sessions(request):
     """Получить сессии пользователя (созданные или участник)"""
-    # Сессии созданные пользователем
-    created_sessions = StudySession.objects.filter(created_by=request.user, is_active=True)
+    try:
+        # Сессии созданные пользователем
+        created_sessions = StudySession.objects.filter(
+            created_by=request.user,
+            is_active=True
+        )
 
-    # Сессии где пользователь участник
-    participant_sessions = StudySession.objects.filter(
-        participants__user=request.user,
-        participants__is_active=True,
-        is_active=True
-    )
+        # Сессии где пользователь участник
+        participant_sessions = StudySession.objects.filter(
+            participants__user=request.user,
+            participants__is_active=True,
+            is_active=True
+        )
 
-    # Объединяем и убираем дубликаты
-    sessions = (created_sessions | participant_sessions).distinct().order_by('scheduled_time')
-    serializer = StudySessionSerializer(sessions, many=True)
-    return Response(serializer.data)
+        # Объединяем и убираем дубликаты
+        sessions = (created_sessions | participant_sessions).distinct().order_by('scheduled_time')
 
+        # Добавляем информацию об участниках
+        sessions_with_participants = []
+        for session in sessions:
+            session_data = StudySessionSerializer(session).data
+            # Добавляем флаг является ли пользователь создателем
+            session_data['is_creator'] = session.created_by == request.user
+            # Добавляем флаг является ли пользователь участником
+            session_data['is_participant'] = session.participants.filter(
+                user=request.user,
+                is_active=True
+            ).exists()
+            sessions_with_participants.append(session_data)
 
-# study_sessions/views.py - ИСПРАВЛЯЕМ create_session
+        return Response(sessions_with_participants)
+
+    except Exception as e:
+        print(f"Error in get_my_sessions: {e}")
+        return Response({'error': 'Internal server error'}, status=500)
+
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Временно оставляем AllowAny
+@permission_classes([IsAuthenticated])
 def create_session(request):
     """Создать учебную сессию"""
-    print(f"🎯 Create session request received")
-    print(f"📦 Data: {request.data}")
-
-    # Используем testuser по умолчанию
-    from django.contrib.auth.models import User
-    try:
-        user = User.objects.get(username='testuser')
-        print(f"👤 Using default user: {user.username}")
-    except User.DoesNotExist:
-        # Если testuser не существует, создаем его
-        user = User.objects.create_user(
-            username='testuser',
-            email='test@test.com',
-            password='testpass123'
-        )
-        print(f"👤 Created default user: {user.username}")
-
     serializer = CreateStudySessionSerializer(data=request.data)
     if serializer.is_valid():
-        session = serializer.save(created_by=user)
-        SessionParticipant.objects.create(session=session, user=user)
+        try:
+            session = serializer.save(created_by=request.user)
+            # Автоматически добавляем создателя как участника
+            SessionParticipant.objects.create(session=session, user=request.user)
 
-        print(f"✅ Session created: {session.title}")
-        return Response(StudySessionSerializer(session).data, status=status.HTTP_201_CREATED)
+            full_session_data = StudySessionSerializer(session).data
+            return Response(full_session_data, status=status.HTTP_201_CREATED)
 
-    print(f"❌ Validation errors: {serializer.errors}")
+        except Exception as e:
+            print(f"❌ Error creating session: {e}")
+            return Response(
+                {'error': f'Error creating session: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
@@ -102,9 +109,14 @@ def join_session(request, session_id):
         return Response({'error': 'Нельзя присоединиться к начавшейся сессии'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Присоединяем пользователя
-    participant = SessionParticipant.objects.create(session=session, user=request.user)
-    return Response({'status': 'Вы присоединились к сессии'}, status=status.HTTP_201_CREATED)
+    SessionParticipant.objects.create(session=session, user=request.user)
 
+    # Возвращаем обновленные данные сессии
+    updated_session = StudySessionSerializer(session).data
+    return Response({
+        'message': 'Вы присоединились к сессии',
+        'session': updated_session
+    }, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -124,8 +136,14 @@ def leave_session(request, session_id):
         return Response({'error': 'Создатель не может покинуть сессию'}, status=status.HTTP_400_BAD_REQUEST)
 
     participant.delete()
-    return Response({'status': 'Вы покинули сессию'})
 
+    # Возвращаем обновленные данные сессии
+    session = StudySession.objects.get(id=session_id)
+    updated_session = StudySessionSerializer(session).data
+    return Response({
+        'message': 'Вы покинули сессию',
+        'session': updated_session
+    })
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -138,36 +156,152 @@ def delete_session(request, session_id):
 
     session.is_active = False
     session.save()
-    return Response({'status': 'Сессия удалена'})
+    return Response({'message': 'Сессия удалена'})
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def get_invitations(request):
-    """Получить приглашения пользователя - временная заглушка"""
-    return Response({
-        'message': 'Система приглашений будет реализована в следующем обновлении',
-        'invitations': []
-    })
+    """Получить приглашения пользователя"""
+    try:
+        invitations = SessionInvitation.objects.filter(
+            invitee=request.user
+        ).select_related('session', 'inviter', 'inviter__profile')
+
+        invitations_data = []
+        for invitation in invitations:
+            invitation_data = {
+                'id': invitation.id,
+                'session': {
+                    'id': invitation.session.id,
+                    'title': invitation.session.title,
+                    'description': invitation.session.description,
+                    'subject_name': invitation.session.subject_name,
+                    'scheduled_time': invitation.session.scheduled_time,
+                    'duration_minutes': invitation.session.duration_minutes,
+                    'created_by': invitation.session.created_by.username
+                },
+                'inviter': {
+                    'id': invitation.inviter.id,
+                    'username': invitation.inviter.username,
+                    'first_name': invitation.inviter.first_name,
+                    'last_name': invitation.inviter.last_name
+                },
+                'status': invitation.status,
+                'created_at': invitation.created_at,
+                'responded_at': invitation.responded_at
+            }
+            invitations_data.append(invitation_data)
+
+        return Response(invitations_data)
+
+    except Exception as e:
+        print(f"Error in get_invitations: {e}")
+        return Response({'error': 'Internal server error'}, status=500)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
-def send_invitation(request, session_id):
-    """Отправить приглашение - временная заглушка"""
-    return Response({
-        'message': 'Приглашение отправлено (заглушка)',
-        'session_id': session_id,
-        'user_id': request.data.get('user_id')
-    })
+@permission_classes([IsAuthenticated])
+def send_invitation(request):
+    """Отправить приглашение на сессию"""
+    try:
+        session_id = request.data.get('session_id')
+        invitee_id = request.data.get('user_id')
+
+        if not session_id or not invitee_id:
+            return Response({
+                'error': 'session_id и user_id обязательны'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        session = StudySession.objects.get(id=session_id, is_active=True)
+        invitee = User.objects.get(id=invitee_id)
+
+        # Проверяем, не отправили ли уже приглашение
+        if SessionInvitation.objects.filter(session=session, invitee=invitee).exists():
+            return Response({
+                'error': 'Приглашение уже отправлено этому пользователю'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверяем, что приглашающий - создатель сессии
+        if session.created_by != request.user:
+            return Response({
+                'error': 'Только создатель сессии может отправлять приглашения'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        # Проверяем, что не приглашаем самого себя
+        if invitee.id == request.user.id:
+            return Response({
+                'error': 'Нельзя отправить приглашение самому себе'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Создаем приглашение
+        invitation = SessionInvitation.objects.create(
+            session=session,
+            inviter=request.user,
+            invitee=invitee,
+            status='pending'
+        )
+
+        return Response({
+            'message': 'Приглашение успешно отправлено',
+            'invitation_id': invitation.id,
+            'session_title': session.title,
+            'invitee_name': invitee.username
+        }, status=status.HTTP_201_CREATED)
+
+    except StudySession.DoesNotExist:
+        return Response({
+            'error': 'Сессия не найдена'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except User.DoesNotExist:
+        return Response({
+            'error': 'Пользователь не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f"Error in send_invitation: {e}")
+        return Response({
+            'error': 'Внутренняя ошибка сервера'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def respond_to_invitation(request, invitation_id):
-    """Ответить на приглашение - временная заглушка"""
-    return Response({
-        'message': f'Приглашение {request.data.get("response", "обработано")}',
-        'invitation_id': invitation_id
-    })
+    """Ответить на приглашение"""
+    try:
+        invitation = SessionInvitation.objects.get(
+            id=invitation_id,
+            invitee=request.user,
+            status='pending'
+        )
 
+        response = request.data.get('response')
+        if response not in ['accepted', 'declined']:
+            return Response({'error': 'Неверный ответ'}, status=400)
+
+        invitation.status = response
+        invitation.responded_at = timezone.now()
+        invitation.save()
+
+        # Если приняли приглашение - добавляем в участники
+        if response == 'accepted':
+            # Проверяем лимит участников
+            if invitation.session.current_participants_count >= invitation.session.max_participants:
+                return Response({'error': 'Достигнут лимит участников'}, status=400)
+
+            # Добавляем в участники
+            SessionParticipant.objects.get_or_create(
+                session=invitation.session,
+                user=request.user
+            )
+
+        return Response({
+            'message': f'Приглашение {response}',
+            'invitation_id': invitation.id
+        })
+
+    except SessionInvitation.DoesNotExist:
+        return Response({'error': 'Приглашение не найдено'}, status=404)
+    except Exception as e:
+        print(f"Error in respond_to_invitation: {e}")
+        return Response({'error': 'Internal server error'}, status=500)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -175,8 +309,25 @@ def get_session_participants(request, session_id):
     """Получить участников сессии"""
     try:
         session = StudySession.objects.get(id=session_id)
-        participants = session.participants.filter(is_active=True)
-        # Временная заглушка
-        return Response([])
+        participants = session.participants.filter(is_active=True).select_related('user', 'user__profile')
+
+        participants_data = []
+        for participant in participants:
+            participant_data = {
+                'id': participant.id,
+                'user': participant.user.id,
+                'user_profile': {
+                    'username': participant.user.username,
+                    'first_name': participant.user.first_name,
+                    'last_name': participant.user.last_name,
+                    'faculty': participant.user.profile.faculty if hasattr(participant.user, 'profile') else '',
+                    'year_of_study': participant.user.profile.year_of_study if hasattr(participant.user, 'profile') else None
+                },
+                'joined_at': participant.joined_at
+            }
+            participants_data.append(participant_data)
+
+        return Response(participants_data)
+
     except StudySession.DoesNotExist:
         return Response({'error': 'Session not found'}, status=404)

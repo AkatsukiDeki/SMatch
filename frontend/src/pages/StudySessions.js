@@ -1,10 +1,10 @@
-// src/pages/StudySessions.js - УПРОЩАЕМ
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { studySessionsAPI } from '../services/api';
 import SessionCard from '../components/study-sessions/SessionCard';
 import SessionForm from '../components/study-sessions/SessionForm';
 import SessionInvitations from '../components/study-sessions/SessionInvitations';
+import SessionCardSkeleton from '../components/study-sessions/SessionCardSkeleton';
 import './StudySessions.css';
 
 const StudySessions = () => {
@@ -14,22 +14,28 @@ const StudySessions = () => {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadSessions();
-  }, []);
+  const [error, setError] = useState('');
 
   const loadSessions = async () => {
     try {
       setLoading(true);
+      setError('');
+      console.log('🔄 Загрузка сессий...');
+
       const [allSessions, mySessionsData] = await Promise.all([
         studySessionsAPI.getSessions(),
         studySessionsAPI.getMySessions()
       ]);
+
+      console.log('✅ Все сессии:', allSessions.data);
+      console.log('✅ Мои сессии:', mySessionsData.data);
+
       setSessions(allSessions.data);
       setMySessions(mySessionsData.data);
+
     } catch (error) {
-      console.error('Ошибка загрузки сессий:', error);
+      console.error('❌ Ошибка загрузки сессий:', error);
+      setError('Не удалось загрузить сессии. Пожалуйста, попробуйте позже.');
     } finally {
       setLoading(false);
     }
@@ -39,32 +45,30 @@ const StudySessions = () => {
     try {
       await studySessionsAPI.createSession(sessionData);
       setShowForm(false);
-      loadSessions(); // Перезагружаем список
+      await loadSessions();
     } catch (error) {
-      console.error('Ошибка создания сессии:', error);
-      alert('Ошибка при создании сессии');
+      console.error('❌ Ошибка создания сессии:', error);
+      alert('Ошибка при создании сессии: ' + (error.response?.data?.error || error.message));
     }
   };
 
   const handleJoinSession = async (sessionId) => {
     try {
       await studySessionsAPI.joinSession(sessionId);
-      loadSessions(); // Перезагружаем список
-      alert('Вы присоединились к сессии!');
+      await loadSessions();
     } catch (error) {
-      console.error('Ошибка присоединения:', error);
-      alert('Ошибка при присоединении к сессии');
+      console.error('❌ Ошибка присоединения:', error);
+      alert('Ошибка при присоединении к сессии: ' + (error.response?.data?.error || error.message));
     }
   };
 
   const handleLeaveSession = async (sessionId) => {
     try {
       await studySessionsAPI.leaveSession(sessionId);
-      loadSessions();
-      alert('Вы покинули сессию');
+      await loadSessions();
     } catch (error) {
-      console.error('Ошибка выхода:', error);
-      alert('Ошибка при выходе из сессии');
+      console.error('❌ Ошибка выхода:', error);
+      alert('Ошибка при выходе из сессии: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -72,14 +76,19 @@ const StudySessions = () => {
     if (window.confirm('Вы уверены, что хотите удалить эту сессию?')) {
       try {
         await studySessionsAPI.deleteSession(sessionId);
-        loadSessions();
-        alert('Сессия удалена');
+        await loadSessions();
       } catch (error) {
-        console.error('Ошибка удаления:', error);
-        alert('Ошибка при удалении сессии');
+        console.error('❌ Ошибка удаления:', error);
+        alert('Ошибка при удалении сессии: ' + (error.response?.data?.error || error.message));
       }
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadSessions();
+    }
+  }, [user]);
 
   if (!user) {
     return (
@@ -96,11 +105,15 @@ const StudySessions = () => {
   return (
     <div className="study-sessions-page">
       <div className="sessions-header">
-        <h1>Учебные сессии</h1>
-        <p>Организуйте и присоединяйтесь к учебным встречам</p>
+        <div className="header-content">
+          <h1>📚 Учебные сессии</h1>
+          <p>Организуйте и присоединяйтесь к учебным встречам</p>
+        </div>
         <button
           className="create-session-btn"
           onClick={() => setShowForm(true)}
+          disabled={loading}
+          type="button"
         >
           ➕ Создать сессию
         </button>
@@ -110,44 +123,69 @@ const StudySessions = () => {
         <button
           className={`tab ${activeTab === 'all' ? 'active' : ''}`}
           onClick={() => setActiveTab('all')}
+          disabled={loading}
+          type="button"
         >
           📚 Все сессии
         </button>
         <button
           className={`tab ${activeTab === 'my' ? 'active' : ''}`}
           onClick={() => setActiveTab('my')}
+          disabled={loading}
+          type="button"
         >
           👤 Мои сессии
         </button>
         <button
           className={`tab ${activeTab === 'invitations' ? 'active' : ''}`}
           onClick={() => setActiveTab('invitations')}
+          disabled={loading}
+          type="button"
         >
           📨 Приглашения
         </button>
       </div>
 
       <div className="sessions-content">
+        {error && (
+          <div className="error-message">
+            <p>{error}</p>
+            <button onClick={loadSessions}>Попробовать снова</button>
+          </div>
+        )}
+
         {activeTab === 'invitations' ? (
           <SessionInvitations />
         ) : (
           <>
             {loading ? (
-              <div className="loading">
-                <div className="spinner"></div>
-                <p>Загрузка сессий...</p>
+              <div className="sessions-grid">
+                {[...Array(6)].map((_, index) => (
+                  <SessionCardSkeleton key={index} />
+                ))}
               </div>
             ) : displaySessions.length === 0 ? (
               <div className="no-sessions">
-                <h3>Пока нет сессий</h3>
-                <p>{activeTab === 'all'
-                  ? 'Будьте первым, кто создаст учебную сессию!'
-                  : 'Вы еще не создали и не присоединились к сессиям'
-                }</p>
+                <div className="no-sessions-icon">
+                  {activeTab === 'all' ? '📚' : '👤'}
+                </div>
+                <h3>
+                  {activeTab === 'all'
+                    ? 'Пока нет учебных сессий'
+                    : 'У вас пока нет сессий'
+                  }
+                </h3>
+                <p>
+                  {activeTab === 'all'
+                    ? 'Будьте первым, кто создаст учебную сессию!'
+                    : 'Вы еще не создали и не присоединились к сессиям'
+                  }
+                </p>
                 {activeTab === 'my' && (
                   <button
                     className="create-session-btn"
                     onClick={() => setShowForm(true)}
+                    type="button"
                   >
                     ➕ Создать первую сессию
                   </button>
@@ -163,6 +201,7 @@ const StudySessions = () => {
                     onJoin={handleJoinSession}
                     onLeave={handleLeaveSession}
                     onDelete={handleDeleteSession}
+                    onInviteSent={loadSessions}
                   />
                 ))}
               </div>

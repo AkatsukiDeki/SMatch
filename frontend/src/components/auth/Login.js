@@ -1,4 +1,3 @@
-// src/components/auth/Login.js
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -19,26 +18,10 @@ const Login = () => {
     setError('');
 
     try {
-      console.log('Попытка входа с данными:', credentials);
       await login(credentials);
-      console.log('Вход успешен!');
       navigate('/');
     } catch (error) {
-      console.error('Полная ошибка входа:', error);
-      console.error('Данные ошибки:', error.response?.data);
-
-      let errorMessage = 'Ошибка входа';
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        } else if (typeof error.response.data === 'string') {
-          errorMessage = error.response.data;
-        }
-      }
-
+      const errorMessage = error.response?.data?.error || 'Ошибка входа';
       setError(errorMessage);
     } finally {
       setLoading(false);

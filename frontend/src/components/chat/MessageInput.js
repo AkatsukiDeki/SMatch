@@ -5,8 +5,11 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const sessionOptionsRef = useRef(null);
+  const emojiPickerRef = useRef(null);
 
   const handleChange = (e) => {
     const value = e.target.value;
@@ -55,7 +58,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
         sessionMessage = '🎯 Предлагаю быстро собраться на учебную сессию! Есть время позаниматься?';
         break;
       case 'planned':
-        sessionMessage = '📅 Хочешь запланировать учебную сессию на этой неделе?';
+        sessionMessage = '📅 Хочешь запланировать учебную сессию на этой неделе? Когда тебе удобно?';
         break;
       case 'subject':
         sessionMessage = `📚 Предлагаю создать сессию по предмету. Какой предмет тебя интересует?`;
@@ -75,12 +78,40 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
     setShowSessionOptions(false);
   };
 
+  // Функция для добавления эмодзи
+  const handleEmojiSelect = (emoji) => {
+    setMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+
+    // Фокус обратно на textarea
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   const autoResizeTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
     }
   };
+
+  // Закрытие dropdown при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sessionOptionsRef.current && !sessionOptionsRef.current.contains(event.target)) {
+        setShowSessionOptions(false);
+      }
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     autoResizeTextarea();
@@ -105,6 +136,13 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
     onSendMessage(text);
   };
 
+  // Популярные эмодзи для быстрого выбора
+  const popularEmojis = [
+    '😊', '😂', '🥰', '😎', '🤔', '👏', '🎉', '🚀',
+    '📚', '🎓', '💡', '⭐', '🔥', '💯', '❤️', '👍',
+    '👋', '🎯', '💪', '🤝', '🙏', '✍️', '🧠', '🌟'
+  ];
+
   return (
     <div className="message-input-container">
       {/* Индикатор печати */}
@@ -121,8 +159,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
         </div>
       )}
 
-      {/* Быстрые ответы (только для пустого инпута) */}
-      {/* УДАЛЕНО: проверка messages.length > 0, так как messages не передается в пропсах */}
+      {/* Быстрые ответы */}
       {!message.trim() && (
         <div className="quick-replies">
           {quickReplies.map((reply, index) => (
@@ -130,6 +167,8 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
               key={index}
               className="quick-reply-btn"
               onClick={() => handleQuickReply(reply.text)}
+              type="button"
+              aria-label={`Быстрый ответ: ${reply.text}`}
             >
               <span className="quick-reply-emoji">{reply.emoji}</span>
               {reply.text}
@@ -141,11 +180,16 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
       <div className="message-input">
         <div className="input-actions">
           {/* Кнопка быстрых сессий */}
-          <div className="session-options-container">
+          <div className="session-options-container" ref={sessionOptionsRef}>
             <button
               className="session-options-btn"
-              onClick={() => setShowSessionOptions(!showSessionOptions)}
+              onClick={() => {
+                setShowSessionOptions(!showSessionOptions);
+                setShowEmojiPicker(false);
+              }}
               title="Предложить учебную сессию"
+              aria-label="Предложить учебную сессию"
+              type="button"
             >
               📚
             </button>
@@ -187,10 +231,49 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
             )}
           </div>
 
-          {/* Кнопка эмодзи (заглушка для будущей реализации) */}
-          <button className="emoji-btn" title="Эмодзи">
-            😊
-          </button>
+          {/* Кнопка эмодзи */}
+          <div className="emoji-picker-container" ref={emojiPickerRef}>
+            <button
+              className="emoji-btn"
+              onClick={() => {
+                setShowEmojiPicker(!showEmojiPicker);
+                setShowSessionOptions(false);
+              }}
+              title="Эмодзи"
+              aria-label="Выбрать эмодзи"
+              type="button"
+            >
+              😊
+            </button>
+
+            {showEmojiPicker && (
+              <div className="emoji-picker">
+                <div className="emoji-picker-header">
+                  <span>Выберите эмодзи</span>
+                  <button
+                    className="emoji-picker-close"
+                    onClick={() => setShowEmojiPicker(false)}
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="emoji-grid">
+                  {popularEmojis.map((emoji, index) => (
+                    <button
+                      key={index}
+                      className="emoji-item"
+                      onClick={() => handleEmojiSelect(emoji)}
+                      type="button"
+                      aria-label={`Эмодзи ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="input-container">
@@ -202,6 +285,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
             placeholder={`Напишите сообщение ${otherUser ? `для ${otherUser.first_name || otherUser.username}` : ''}...`}
             rows="1"
             className="message-textarea"
+            aria-label="Поле ввода сообщения"
           />
 
           <button
@@ -209,6 +293,8 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
             disabled={!message.trim()}
             className="send-btn"
             title="Отправить сообщение"
+            aria-label="Отправить сообщение"
+            type="button"
           >
             {message.trim() ? '➤' : '⚡'}
           </button>
