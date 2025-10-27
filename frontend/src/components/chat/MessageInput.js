@@ -1,44 +1,108 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './MessageInput.css';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNotification } from '../../context/NotificationContext';
+import EnhancedWebSocketService from '../../services/EnhancedWebSocketService';
+import './EnhancedMessageInput.css';
 
-const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
+const EnhancedMessageInput = ({ onSendMessage, onCreateSession, otherUser, chatRoomId }) => {
   const [message, setMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [showSessionOptions, setShowSessionOptions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const { addNotification } = useNotification();
+
   const textareaRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
   const sessionOptionsRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
+  // Обработчик тайпинга от других пользователей
+  const handleTypingIndicator = useCallback((data) => {
+    if (data.type === 'typing' && data.user_id !== otherUser?.id) {
+      setOtherUserTyping(data.is_typing);
+
+      if (data.is_typing) {
+        // Автоматически скрываем через 3 секунды
+        setTimeout(() => {
+          setOtherUserTyping(false);
+        }, 3000);
+      }
+    }
+  }, [otherUser]);
+
+  // Отправка индикатора тайпинга
+  const sendTypingIndicator = useCallback((typing) => {
+    if (chatRoomId && EnhancedWebSocketService.isConnected) {
+      EnhancedWebSocketService.sendTypingIndicator(typing);
+    }
+  }, [chatRoomId]);
+
+  // Обработчик изменения сообщения
   const handleChange = (e) => {
-    const value = e.target.value;
-    setMessage(value);
+    const newMessage = e.target.value;
+    setMessage(newMessage);
 
-    // Симуляция индикатора печати
-    if (!isTyping && value.trim()) {
+    // Отправляем индикатор тайпинга
+    if (newMessage.length > 0 && !isTyping) {
       setIsTyping(true);
+      sendTypingIndicator(true);
+    } else if (newMessage.length === 0 && isTyping) {
+      setIsTyping(false);
+      sendTypingIndicator(false);
     }
 
-    // Сбрасываем таймер печати
+    // Сбрасываем и перезапускаем таймер тайпинга
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
+      if (isTyping) {
+        setIsTyping(false);
+        sendTypingIndicator(false);
+      }
     }, 1000);
   };
 
-  const handleSend = () => {
-    if (message.trim()) {
-      onSendMessage(message.trim());
-      setMessage('');
-      setIsTyping(false);
+  const handleSend = async () => {
+    if (message.trim() && !isSending) {
+      setIsSending(true);
 
-      // Сбрасываем высоту textarea
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
+      // Останавливаем тайпинг
+      setIsTyping(false);
+      sendTypingIndicator(false);
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      try {
+        const result = await onSendMessage(message.trim());
+
+        if (result && result.queued) {
+          addNotification({
+            type: 'info',
+            title: 'Сообщение в очереди',
+            message: 'Сообщение будет отправлено когда соединение восстановится',
+            duration: 3000
+          });
+        }
+
+        setMessage('');
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        addNotification({
+          type: 'error',
+          title: 'Ошибка отправки',
+          message: 'Не удалось отправить сообщение',
+          duration: 5000
+        });
+      } finally {
+        setIsSending(false);
       }
     }
   };
@@ -50,6 +114,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
     }
   };
 
+  // Быстрые сессии
   const handleQuickSession = (type) => {
     let sessionMessage = '';
 
@@ -71,19 +136,10 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
     setShowSessionOptions(false);
   };
 
-  const handleCreateFullSession = () => {
-    if (onCreateSession && otherUser) {
-      onCreateSession(otherUser);
-    }
-    setShowSessionOptions(false);
-  };
-
-  // Функция для добавления эмодзи
+  // Эмодзи
   const handleEmojiSelect = (emoji) => {
     setMessage(prev => prev + emoji);
     setShowEmojiPicker(false);
-
-    // Фокус обратно на textarea
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
@@ -96,34 +152,21 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
     }
   };
 
-  // Закрытие dropdown при клике вне его
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (sessionOptionsRef.current && !sessionOptionsRef.current.contains(event.target)) {
-        setShowSessionOptions(false);
-      }
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
-        setShowEmojiPicker(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
+  // Эффекты
   useEffect(() => {
     autoResizeTextarea();
   }, [message]);
 
   useEffect(() => {
+    const removeTypingHandler = EnhancedWebSocketService.onMessage(handleTypingIndicator);
+
     return () => {
+      removeTypingHandler();
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, []);
+  }, [handleTypingIndicator]);
 
   const quickReplies = [
     { text: 'Привет! 👋', emoji: '👋' },
@@ -132,11 +175,6 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
     { text: 'Отлично понял!', emoji: '✅' },
   ];
 
-  const handleQuickReply = (text) => {
-    onSendMessage(text);
-  };
-
-  // Популярные эмодзи для быстрого выбора
   const popularEmojis = [
     '😊', '😂', '🥰', '😎', '🤔', '👏', '🎉', '🚀',
     '📚', '🎓', '💡', '⭐', '🔥', '💯', '❤️', '👍',
@@ -144,9 +182,9 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
   ];
 
   return (
-    <div className="message-input-container">
-      {/* Индикатор печати */}
-      {isTyping && otherUser && (
+    <div className="enhanced-message-input">
+      {/* Индикатор тайпинга другого пользователя */}
+      {otherUserTyping && (
         <div className="typing-indicator">
           <div className="typing-dots">
             <span></span>
@@ -154,7 +192,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
             <span></span>
           </div>
           <span className="typing-text">
-            {otherUser.first_name || otherUser.username} печатает...
+            {otherUser?.first_name || otherUser?.username || 'Кто-то'} печатает...
           </span>
         </div>
       )}
@@ -166,9 +204,9 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
             <button
               key={index}
               className="quick-reply-btn"
-              onClick={() => handleQuickReply(reply.text)}
+              onClick={() => onSendMessage(reply.text)}
               type="button"
-              aria-label={`Быстрый ответ: ${reply.text}`}
+              disabled={isSending}
             >
               <span className="quick-reply-emoji">{reply.emoji}</span>
               {reply.text}
@@ -177,9 +215,9 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
         </div>
       )}
 
-      <div className="message-input">
+      <div className="input-container">
         <div className="input-actions">
-          {/* Кнопка быстрых сессий */}
+          {/* Сессии */}
           <div className="session-options-container" ref={sessionOptionsRef}>
             <button
               className="session-options-btn"
@@ -187,9 +225,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
                 setShowSessionOptions(!showSessionOptions);
                 setShowEmojiPicker(false);
               }}
-              title="Предложить учебную сессию"
-              aria-label="Предложить учебную сессию"
-              type="button"
+              disabled={isSending}
             >
               📚
             </button>
@@ -220,18 +256,20 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
                   </div>
                 </div>
 
-                <div className="session-option" onClick={handleCreateFullSession}>
-                  <span className="session-emoji">✨</span>
-                  <div className="session-info">
-                    <div className="session-title">Полная сессия</div>
-                    <div className="session-desc">Создать с деталями</div>
+                {onCreateSession && (
+                  <div className="session-option" onClick={handleCreateFullSession}>
+                    <span className="session-emoji">✨</span>
+                    <div className="session-info">
+                      <div className="session-title">Полная сессия</div>
+                      <div className="session-desc">Создать с деталями</div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Кнопка эмодзи */}
+          {/* Эмодзи */}
           <div className="emoji-picker-container" ref={emojiPickerRef}>
             <button
               className="emoji-btn"
@@ -239,9 +277,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
                 setShowEmojiPicker(!showEmojiPicker);
                 setShowSessionOptions(false);
               }}
-              title="Эмодзи"
-              aria-label="Выбрать эмодзи"
-              type="button"
+              disabled={isSending}
             >
               😊
             </button>
@@ -253,7 +289,6 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
                   <button
                     className="emoji-picker-close"
                     onClick={() => setShowEmojiPicker(false)}
-                    type="button"
                   >
                     ×
                   </button>
@@ -264,8 +299,6 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
                       key={index}
                       className="emoji-item"
                       onClick={() => handleEmojiSelect(emoji)}
-                      type="button"
-                      aria-label={`Эмодзи ${emoji}`}
                     >
                       {emoji}
                     </button>
@@ -276,7 +309,7 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
           </div>
         </div>
 
-        <div className="input-container">
+        <div className="text-input-wrapper">
           <textarea
             ref={textareaRef}
             value={message}
@@ -285,23 +318,40 @@ const MessageInput = ({ onSendMessage, onCreateSession, otherUser }) => {
             placeholder={`Напишите сообщение ${otherUser ? `для ${otherUser.first_name || otherUser.username}` : ''}...`}
             rows="1"
             className="message-textarea"
-            aria-label="Поле ввода сообщения"
+            disabled={isSending}
           />
 
-          <button
-            onClick={handleSend}
-            disabled={!message.trim()}
-            className="send-btn"
-            title="Отправить сообщение"
-            aria-label="Отправить сообщение"
-            type="button"
-          >
-            {message.trim() ? '➤' : '⚡'}
-          </button>
+          {/* Индикатор тайпинга текущего пользователя */}
+          {isTyping && (
+            <div className="own-typing-indicator">
+              <span>Вы печатаете...</span>
+            </div>
+          )}
         </div>
+
+        <button
+          onClick={handleSend}
+          disabled={!message.trim() || isSending}
+          className="send-btn"
+        >
+          {isSending ? (
+            <div className="sending-spinner"></div>
+          ) : message.trim() ? (
+            '➤'
+          ) : (
+            '⚡'
+          )}
+        </button>
       </div>
+
+      {/* Статус отправки */}
+      {isSending && (
+        <div className="sending-status">
+          <span>Отправка сообщения...</span>
+        </div>
+      )}
     </div>
   );
 };
 
-export default MessageInput;
+export default EnhancedMessageInput;

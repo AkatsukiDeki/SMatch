@@ -3,19 +3,33 @@ from rest_framework import serializers
 
 def get_profile_data(user):
     """Универсальная функция для получения данных профиля"""
-    if not user or not hasattr(user, 'profile'):
+    if not user:
         return None
 
-    return {
-        'id': user.id,
-        'username': user.username,
-        'first_name': user.first_name or '',
-        'last_name': user.last_name or '',
-        'faculty': user.profile.faculty,
-        'year_of_study': user.profile.year_of_study,
-        'study_level': user.profile.study_level,
-        'bio': user.profile.bio
-    }
+    try:
+        profile = user.profile
+        return {
+            'id': user.id,
+            'username': user.username,
+            'first_name': user.first_name or '',
+            'last_name': user.last_name or '',
+            'faculty': profile.faculty if hasattr(profile, 'faculty') else '',
+            'year_of_study': profile.year_of_study if hasattr(profile, 'year_of_study') else None,
+            'study_level': getattr(profile, 'study_level', '') if hasattr(profile, 'study_level') else '',
+            'bio': profile.bio if hasattr(profile, 'bio') else ''
+        }
+    except Exception as e:
+        print(f"Error getting profile data for user {user.username}: {e}")
+        return {
+            'id': user.id,
+            'username': user.username,
+            'first_name': user.first_name or '',
+            'last_name': user.last_name or '',
+            'faculty': '',
+            'year_of_study': None,
+            'study_level': '',
+            'bio': ''
+        }
 
 
 class SimpleProfileSerializer(serializers.Serializer):

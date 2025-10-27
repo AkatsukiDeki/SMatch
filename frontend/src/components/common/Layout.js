@@ -1,21 +1,7 @@
 import React from 'react';
 import Header from './Header';
+import Footer from './Footer'; // Импортируем новый футер
 import './Layout.css';
-
-const Footer = () => {
-  return (
-    <footer className="footer">
-      <div className="footer-content">
-        <p>&copy; 2024 StudyMatch. Все права защищены.</p>
-        <div className="footer-links">
-          <a href="/about">О нас</a>
-          <a href="/privacy">Конфиденциальность</a>
-          <a href="/contact">Контакты</a>
-        </div>
-      </div>
-    </footer>
-  );
-};
 
 const Layout = ({ children, className = '' }) => {
   return (
@@ -24,7 +10,7 @@ const Layout = ({ children, className = '' }) => {
       <main className={`main-content ${className}`}>
         {children}
       </main>
-      <Footer />
+      <Footer /> {/* Используем новый футер */}
     </div>
   );
 };

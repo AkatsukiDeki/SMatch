@@ -2,6 +2,7 @@ from rest_framework import serializers
 from core.serializers import SimpleProfileSerializer, get_profile_data
 from .models import StudySession, SessionParticipant
 
+
 class SessionParticipantSerializer(serializers.ModelSerializer):
     user_profile = serializers.SerializerMethodField()
 
@@ -13,13 +14,14 @@ class SessionParticipantSerializer(serializers.ModelSerializer):
         profile_data = get_profile_data(obj.user)
         return SimpleProfileSerializer(profile_data).data if profile_data else None
 
+
 class StudySessionSerializer(serializers.ModelSerializer):
     subject_info = serializers.SerializerMethodField()
     created_by_profile = serializers.SerializerMethodField()
     participants_count = serializers.SerializerMethodField()
     available_slots = serializers.SerializerMethodField()
     participants = SessionParticipantSerializer(many=True, read_only=True)
-    subject_name = serializers.CharField(read_only=True)
+    subject_name = serializers.ReadOnlyField()
 
     class Meta:
         model = StudySession
@@ -46,10 +48,27 @@ class StudySessionSerializer(serializers.ModelSerializer):
     def get_available_slots(self, obj):
         return obj.available_slots
 
+
 class CreateStudySessionSerializer(serializers.ModelSerializer):
+    subject_name = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = StudySession
         fields = [
-            'title', 'description', 'subject', 'scheduled_time',
+            'title', 'description', 'subject', 'subject_name', 'scheduled_time',
             'duration_minutes', 'max_participants'
         ]
+
+    def create(self, validated_data):
+        # Извлекаем subject_name если он передан
+        subject_name = validated_data.pop('subject_name', None)
+
+        # Создаем сессию
+        session = StudySession.objects.create(**validated_data)
+
+        # Если передан subject_name, сохраняем его
+        if subject_name and not session.subject_name:
+            session.subject_name = subject_name
+            session.save()
+
+        return session

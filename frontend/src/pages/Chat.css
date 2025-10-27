@@ -620,3 +620,84 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Индикатор статуса подключения */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  font-size: 0.8rem;
+}
+
+.status-indicator.connected {
+  color: #22c55e;
+}
+
+.status-indicator.disconnected {
+  color: #ef4444;
+}
+
+/* Индикатор отправки */
+.sending-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.sending-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Сообщение в процессе отправки */
+.message.sending .message-content {
+  opacity: 0.7;
+  background: #f3f4f6;
+}
+
+.message.sending.own .message-content {
+  background: #a5b4fc;
+}
+
+/* Анимации */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Улучшенные состояния кнопок */
+.send-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.quick-reply-btn:disabled,
+.session-options-btn:disabled,
+.emoji-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Адаптивность для индикаторов */
+@media (max-width: 768px) {
+  .connection-status {
+    font-size: 0.7rem;
+  }
+
+  .sending-indicator {
+    font-size: 0.7rem;
+  }
+}

@@ -55,19 +55,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         try:
             text_data_json = json.loads(text_data)
-            message = text_data_json.get('message', '').strip()
+            message_content = text_data_json.get('message', '').strip()
             user_id = self.scope["user"].id
 
-            if not message:
+            if not message_content:
                 await self.send(text_data=json.dumps({
                     'error': 'Message is required'
                 }))
                 return
 
             # Сохраняем сообщение в БД
-            success = await self.save_message(user_id, self.chat_room_id, message)
+            saved_message = await self.save_message(user_id, self.chat_room_id, message_content)
 
-            if not success:
+            if not saved_message:
                 await self.send(text_data=json.dumps({
                     'error': 'Failed to save message'
                 }))
@@ -78,9 +78,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.room_group_name,
                 {
                     'type': 'chat_message',
-                    'message': message,
+                    'message': message_content,
                     'username': self.scope["user"].username,
-                    'user_id': user_id
+                    'user_id': user_id,
+                    'message_id': saved_message.id,
+                    'timestamp': saved_message.timestamp.isoformat()
                 }
             )
         except json.JSONDecodeError:
@@ -96,10 +98,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         try:
             await self.send(text_data=json.dumps({
+                'id': event.get('message_id'),
                 'message': event['message'],
                 'username': event['username'],
                 'user_id': event['user_id'],
-                'timestamp': str(self.get_current_timestamp())
+                'timestamp': event.get('timestamp')
             }))
         except Exception as e:
             log_websocket_event(f"Error sending message: {e}", 'error')
@@ -129,20 +132,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user = User.objects.get(id=user_id)
             chat_room = ChatRoom.objects.get(id=chat_room_id, is_active=True)
 
-            Message.objects.create(
+            message = Message.objects.create(
                 chat_room=chat_room,
                 sender=user,
                 content=content
             )
-            return True
+            return message  # Возвращаем объект сообщения
         except (User.DoesNotExist, ChatRoom.DoesNotExist) as e:
             log_websocket_event(f"Save message error - not found: {e}", 'error')
-            return False
+            return None
         except Exception as e:
             log_websocket_event(f"Save message error: {e}", 'error')
-            return False
-
-    @database_sync_to_async
-    def get_current_timestamp(self):
-        from django.utils import timezone
-        return timezone.now()
+            return None
